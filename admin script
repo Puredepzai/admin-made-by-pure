@@ -5,7 +5,7 @@
     ██╔═══╝ ██║   ██║██╔══██╗██╔══╝      ██╔══██║██║  ██║██║╚██╔╝██║██║██║╚██╗██║
     ██║     ╚██████╔╝██║  ██║███████╗    ██║  ██║██████╔╝██║ ╚═╝ ██║██║██║ ╚████║
     ╚═╝      ╚═════╝ ╚═╝  ╚═╝╚══════╝    ╚═╝  ╚═╝╚═════╝ ╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝
-    Pure Admin - Premium Command Console for Delta Executor (R6/R15 Improved)
+    Pure Admin - Premium Command Console for Delta Executor
 --]]
 
 local Players = game:GetService("Players")
@@ -13,9 +13,6 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
-local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -35,18 +32,18 @@ PureAdminGUI.ResetOnSpawn = false
 local isOpened = false
 local walkFlingActive = false
 local flyActive = false
+local flyBypassActive = false
 local noclipActive = false
 local infJumpActive = false
 local espActive = false
+local speedBypassActive = false
+local trollAnimActive = false
 local flySpeed = 50
+local speedBypassVal = 100
 local normalGravity = workspace.Gravity
-local loopWalkSpeedActive = false
-local targetWalkSpeedValue = 16
-local loopWalkSpeedConnection
-local spamChatActive = false
-local spamChatMessage = "Pure Admin Command Console!"
-local spinActive = false
-local antilagActive = false
+
+-- Store original joint transforms for resetting
+local originalC0s = {}
 
 -- Draggable Function with Mobile Support
 local function makeDraggable(gui)
@@ -184,6 +181,19 @@ InputStroke.Color = Color3.fromRGB(40, 40, 40)
 InputStroke.Thickness = 1
 InputStroke.Parent = InputContainer
 
+-- Command Suggestion Label (Behind Input)
+local SuggestionLabel = Instance.new("TextLabel")
+SuggestionLabel.Parent = InputContainer
+SuggestionLabel.Size = UDim2.new(1, -20, 1, 0)
+SuggestionLabel.Position = UDim2.new(0, 10, 0, 0)
+SuggestionLabel.BackgroundTransparency = 1
+SuggestionLabel.Text = ""
+SuggestionLabel.TextColor3 = Color3.fromRGB(110, 110, 110)
+SuggestionLabel.Font = Enum.Font.Code
+SuggestionLabel.TextSize = 14
+SuggestionLabel.TextXAlignment = Enum.TextXAlignment.Left
+SuggestionLabel.ZIndex = 1
+
 local ConsoleInput = Instance.new("TextBox")
 ConsoleInput.Parent = InputContainer
 ConsoleInput.Size = UDim2.new(1, -20, 1, 0)
@@ -196,37 +206,13 @@ ConsoleInput.Font = Enum.Font.Code
 ConsoleInput.TextSize = 14
 ConsoleInput.TextXAlignment = Enum.TextXAlignment.Left
 ConsoleInput.ClearTextOnFocus = false
-
--- Suggestions Panel (Dynamic Autocomplete)
-local SuggestionBox = Instance.new("Frame")
-SuggestionBox.Name = "SuggestionBox"
-SuggestionBox.Parent = MainFrame
-SuggestionBox.Size = UDim2.new(1, -30, 0, 32)
-SuggestionBox.Position = UDim2.new(0, 15, 0, 105)
-SuggestionBox.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-SuggestionBox.Visible = false
-SuggestionBox.ZIndex = 5
-
-local SuggestionCorner = Instance.new("UICorner")
-SuggestionCorner.CornerRadius = UDim.new(0, 6)
-SuggestionCorner.Parent = SuggestionBox
-
-local SuggestionText = Instance.new("TextLabel")
-SuggestionText.Parent = SuggestionBox
-SuggestionText.Size = UDim2.new(1, -20, 1, 0)
-SuggestionText.Position = UDim2.new(0, 10, 0, 0)
-SuggestionText.BackgroundTransparency = 1
-SuggestionText.TextColor3 = Color3.fromRGB(0, 170, 255)
-SuggestionText.Font = Enum.Font.Code
-SuggestionText.TextSize = 13
-SuggestionText.TextXAlignment = Enum.TextXAlignment.Left
-SuggestionText.ZIndex = 5
+ConsoleInput.ZIndex = 2
 
 -- Scrollable Command List Frame
 local ScrollContainer = Instance.new("ScrollingFrame")
 ScrollContainer.Parent = MainFrame
-ScrollContainer.Size = UDim2.new(1, -30, 1, -160)
-ScrollContainer.Position = UDim2.new(0, 15, 0, 145)
+ScrollContainer.Size = UDim2.new(1, -30, 1, -170)
+ScrollContainer.Position = UDim2.new(0, 15, 0, 110)
 ScrollContainer.BackgroundTransparency = 1
 ScrollContainer.ScrollBarThickness = 4
 ScrollContainer.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
@@ -240,29 +226,30 @@ ScrollLayout.Padding = UDim.new(0, 5)
 -- Output/Info Console inside GUI
 local InfoText = Instance.new("TextLabel")
 InfoText.Parent = MainFrame
-InfoText.Size = UDim2.new(1, -30, 0, 20)
-InfoText.Position = UDim2.new(0, 15, 1, -25)
+InfoText.Size = UDim2.new(1, -30, 0, 40)
+InfoText.Position = UDim2.new(0, 15, 1, -50)
 InfoText.BackgroundTransparency = 1
 InfoText.Text = "Hệ thống Pure Admin đã sẵn sàng. Gõ 'help' để xem danh sách lệnh."
 InfoText.TextColor3 = Color3.fromRGB(0, 200, 120)
 InfoText.Font = Enum.Font.Gotham
 InfoText.TextSize = 12
 InfoText.TextXAlignment = Enum.TextXAlignment.Left
+InfoText.TextWrapped = true
 
 -- Dynamic Custom Notifications
 local function notify(title, text, duration)
-    task.spawn(function()
+    spawn(function()
         local Notification = Instance.new("Frame")
         Notification.Parent = PureAdminGUI
         Notification.Size = UDim2.new(0, 250, 0, 70)
         Notification.Position = UDim2.new(1, 10, 0.8, 0)
         Notification.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         Notification.BorderSizePixel = 0
-
+        
         local Corner = Instance.new("UICorner")
         Corner.CornerRadius = UDim.new(0, 8)
         Corner.Parent = Notification
-
+        
         local Stroke = Instance.new("UIStroke")
         Stroke.Color = Color3.fromRGB(0, 170, 255)
         Stroke.Thickness = 1.5
@@ -295,12 +282,12 @@ local function notify(title, text, duration)
             Position = UDim2.new(1, -265, 0.8, 0)
         }):Play()
 
-        task.wait(duration or 3)
+        wait(duration or 3)
 
         TweenService:Create(Notification, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
             Position = UDim2.new(1, 10, 0.8, 0)
         }):Play()
-        task.wait(0.5)
+        wait(0.5)
         Notification:Destroy()
     end)
 end
@@ -344,8 +331,7 @@ local function addCommand(names, desc, handler)
     for _, name in ipairs(names) do
         commands[name:lower()] = {
             desc = desc,
-            handler = handler,
-            aliases = names
+            handler = handler
         }
     end
 end
@@ -381,59 +367,6 @@ local function addCommandToUI(names, desc)
     ScrollContainer.CanvasSize = UDim2.new(0, 0, 0, ScrollLayout.AbsoluteContentSize.Y)
 end
 
--- Autocomplete Logic
-ConsoleInput:GetPropertyChangedSignal("Text"):Connect(function()
-    local text = ConsoleInput.Text:lower()
-    if text == "" then
-        SuggestionBox.Visible = false
-        return
-    end
-
-    local found = {}
-    for cmdName, info in pairs(commands) do
-        if cmdName:sub(1, #text) == text then
-            table.insert(found, cmdName)
-        end
-    end
-
-    if #found > 0 then
-        table.sort(found)
-        SuggestionBox.Visible = true
-        SuggestionText.Text = "Gợi ý: " .. table.concat(found, ", ")
-    else
-        SuggestionBox.Visible = false
-    end
-end)
-
--- Autocomplete selection on Tab key or Screen Touch of Suggestion Panel
-UserInputService.InputBegan:Connect(function(input, processed)
-    if input.KeyCode == Enum.KeyCode.Tab and SuggestionBox.Visible then
-        local text = ConsoleInput.Text:lower()
-        for cmdName, _ in pairs(commands) do
-            if cmdName:sub(1, #text) == text then
-                ConsoleInput.Text = cmdName .. " "
-                ConsoleInput:ReleaseFocus()
-                ConsoleInput:CaptureFocus()
-                break
-            end
-        end
-    end
-end)
-
-SuggestionBox.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local text = ConsoleInput.Text:lower()
-        for cmdName, _ in pairs(commands) do
-            if cmdName:sub(1, #text) == text then
-                ConsoleInput.Text = cmdName .. " "
-                SuggestionBox.Visible = false
-                ConsoleInput:CaptureFocus()
-                break
-            end
-        end
-    end
-end)
-
 -- Resolve Player Target Helper
 local function getTargetPlayer(text)
     if not text or text == "" then return {LocalPlayer} end
@@ -446,7 +379,7 @@ local function getTargetPlayer(text)
         return others
     end
     if text:lower() == "me" then return {LocalPlayer} end
-
+    
     local matches = {}
     for _, p in ipairs(Players:GetPlayers()) do
         if p.Name:lower():sub(1, #text) == text:lower() or p.DisplayName:lower():sub(1, #text) == text:lower() then
@@ -456,11 +389,42 @@ local function getTargetPlayer(text)
     return matches
 end
 
--- Universal Root/Torso Getter for R6 and R15
-local function getRoot(char)
-    if not char then return nil end
-    return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("LowerTorso")
-end
+-- Input Autocomplete Logic
+ConsoleInput:GetPropertyChangedSignal("Text"):Connect(function()
+    local text = ConsoleInput.Text
+    if text == "" then
+        SuggestionLabel.Text = ""
+        return
+    end
+
+    local args = text:split(" ")
+    local inputCmd = args[1]:lower()
+
+    local foundMatch = nil
+    for name, _ in pairs(commands) do
+        if name:sub(1, #inputCmd) == inputCmd then
+            foundMatch = name
+            break
+        end
+    end
+
+    if foundMatch then
+        local restOfCmd = foundMatch:sub(#inputCmd + 1)
+        SuggestionLabel.Text = text .. restOfCmd
+    else
+        SuggestionLabel.Text = ""
+    end
+end)
+
+-- Auto Fill Suggestion with Tab / Custom Key
+UserInputService.InputBegan:Connect(function(input, processed)
+    if ConsoleInput:IsFocused() and input.KeyCode == Enum.KeyCode.Tab then
+        if SuggestionLabel.Text ~= "" then
+            ConsoleInput.Text = SuggestionLabel.Text
+            ConsoleInput.CursorPosition = #ConsoleInput.Text + 1
+        end
+    end
+end)
 
 -- ==================== PHYSICS & TARGET FLING LOGIC ====================
 local function FlingTarget(targetPlayer)
@@ -469,8 +433,8 @@ local function FlingTarget(targetPlayer)
     local targetChar = targetPlayer.Character
     if not character or not targetChar then return end
 
-    local hrp = getRoot(character)
-    local targetHrp = getRoot(targetChar)
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
     if not hrp or not targetHrp then return end
 
     local originalPosition = hrp.CFrame
@@ -502,29 +466,24 @@ local function FlingTarget(targetPlayer)
     notify("Fling Done", "Đã hoàn thành fling!", 3)
 end
 
--- Universal Messaging Logic supporting Legacy Chat & TextChatService
-local function sendMessage(msg)
-    local TCS = game:GetService("TextChatService")
-    if TCS.ChatVersion == Enum.ChatVersion.TextChatService then
-        local generalChannel = TCS:FindFirstChild("RBXGeneral", true)
-        if generalChannel and generalChannel:IsA("TextChannel") then
-            generalChannel:SendAsync(msg)
-        end
-    else
-        local rEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-        if rEvents then
-            local sayMsg = rEvents:FindFirstChild("SayMessageRequest")
-            if sayMsg and sayMsg:IsA("RemoteEvent") then
-                sayMsg:FireServer(msg, "All")
+-- ==================== SPEED BYPASS RUNSERVICE LOOP ====================
+RunService.Heartbeat:Connect(function()
+    local char = LocalPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hrp and hum and speedBypassActive then
+            if hum.MoveDirection.Magnitude > 0 then
+                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (speedBypassVal / 300))
             end
         end
     end
-end
+end)
 
--- ==================== REGISTER COMMANDS (100+ LISTED) ====================
+-- ==================== REGISTER COMMANDS ====================
 
 -- 1. WalkSpeed
-addCommand({"speed", "ws"}, "Đặt tốc độ chạy (ví dụ: speed 100)", function(args)
+addCommand({"speed", "ws"}, "Đặt tốc độ chạy mặc định (ví dụ: speed 100)", function(args)
     local spd = tonumber(args[1]) or 16
     local char = LocalPlayer.Character
     if char and char:FindFirstChildOfClass("Humanoid") then
@@ -533,7 +492,21 @@ addCommand({"speed", "ws"}, "Đặt tốc độ chạy (ví dụ: speed 100)", f
     end
 end)
 
--- 2. JumpPower
+-- 2. Speed Bypass Anti-Cheat
+addCommand({"speedbypass", "sbypass"}, "Tốc độ lách anti-cheat (ví dụ: sbypass 150)", function(args)
+    local speedVal = tonumber(args[1]) or 100
+    speedBypassVal = speedVal
+    speedBypassActive = true
+    notify("Speed Bypass", "Đã bật Speed lách Anti-Cheat tốc độ: " .. speedBypassVal, 3)
+end)
+
+-- 2b. Un-speed Bypass
+addCommand({"unsbypass", "nosbypass"}, "Tắt tốc độ lách anti-cheat", function()
+    speedBypassActive = false
+    notify("Speed Bypass", "Đã tắt Speed lách Anti-Cheat!", 3)
+end)
+
+-- 3. JumpPower
 addCommand({"jumppower", "jp"}, "Đặt sức nhảy (ví dụ: jp 100)", function(args)
     local jmp = tonumber(args[1]) or 50
     local char = LocalPlayer.Character
@@ -545,17 +518,17 @@ addCommand({"jumppower", "jp"}, "Đặt sức nhảy (ví dụ: jp 100)", functi
     end
 end)
 
--- 3. WalkFling
+-- 4. WalkFling
 addCommand({"walkfling", "wf"}, "Bật chế độ chạm là bay (Walk Fling)", function()
     walkFlingActive = not walkFlingActive
     if walkFlingActive then
         notify("Walk Fling", "Chế độ chạm là bay đã được BẬT!", 3)
-        task.spawn(function()
+        spawn(function()
             while walkFlingActive do
                 RunService.Heartbeat:Wait()
                 local char = LocalPlayer.Character
                 if char then
-                    local hrp = getRoot(char)
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
                     if hrp then
                         hrp.CanCollide = false
                         local oldVel = hrp.Velocity
@@ -576,7 +549,7 @@ addCommand({"walkfling", "wf"}, "Bật chế độ chạm là bay (Walk Fling)",
     end
 end)
 
--- 4. Fling target
+-- 5. Fling target
 addCommand({"fling"}, "Fling một người chơi cụ thể (ví dụ: fling name)", function(args)
     local targets = getTargetPlayer(args[1])
     for _, t in ipairs(targets) do
@@ -584,70 +557,109 @@ addCommand({"fling"}, "Fling một người chơi cụ thể (ví dụ: fling na
     end
 end)
 
--- 5. Fly
+-- 6. Fly System (Bản cải tiến và sửa lỗi)
 addCommand({"fly"}, "Bay lượn tự do", function()
     if flyActive then return end
     flyActive = true
     local char = LocalPlayer.Character
     if not char then return end
-    local hrp = getRoot(char)
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
     if not hrp then return end
-
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.PlatformStand = true end
+    
     notify("Fly System", "Đã bật chế độ bay tự do!", 3)
-
-    local bg = Instance.new("BodyGyro", hrp)
+    
+    local bg = Instance.new("BodyGyro")
     bg.P = 9e4
     bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
     bg.cframe = hrp.CFrame
-
-    local bv = Instance.new("BodyVelocity", hrp)
+    bg.Parent = hrp
+    
+    local bv = Instance.new("BodyVelocity")
     bv.velocity = Vector3.new(0, 0.1, 0)
     bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-
-    task.spawn(function()
-        while flyActive and char.Parent do
+    bv.Parent = hrp
+    
+    spawn(function()
+        while flyActive and char.Parent and hrp.Parent do
             RunService.RenderStepped:Wait()
             local hum = char:FindFirstChildOfClass("Humanoid")
             if not hum then break end
-
+            
             local direction = Vector3.new()
             local moveDirection = hum.MoveDirection
-
+            
             bg.cframe = Camera.CFrame
             bv.velocity = moveDirection * flySpeed
-
+            
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
                 bv.velocity = bv.velocity + Vector3.new(0, flySpeed, 0)
             elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
                 bv.velocity = bv.velocity - Vector3.new(0, flySpeed, 0)
             end
-
+            
             if moveDirection.Magnitude == 0 and not UserInputService:IsKeyDown(Enum.KeyCode.Space) and not UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-                bv.velocity = Vector3.new(0, 0, 0)
+                bv.velocity = Vector3.new(0, 0.1, 0)
             end
         end
         bg:Destroy()
         bv:Destroy()
+        if hum then hum.PlatformStand = false end
     end)
 end)
 
--- 6. Unfly
-addCommand({"unfly"}, "Tắt bay lượn", function()
-    flyActive = false
-    notify("Fly System", "Đã tắt chế độ bay tự do!", 3)
+-- 7. Fly Bypass Anti-Cheat
+addCommand({"flybypass"}, "Bay lách Anti-cheat an toàn", function()
+    if flyBypassActive then return end
+    flyBypassActive = true
+    notify("Fly Bypass", "Đã bật chế độ bay lách Anti-Cheat!", 3)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.PlatformStand = true end
+
+    spawn(function()
+        while flyBypassActive and char.Parent and hrp.Parent do
+            RunService.Heartbeat:Wait()
+            local dir = hum.MoveDirection
+            local moveVec = dir * (flySpeed / 100)
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                moveVec = moveVec + Vector3.new(0, flySpeed / 100, 0)
+            elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                moveVec = moveVec - Vector3.new(0, flySpeed / 100, 0)
+            end
+            hrp.CFrame = CFrame.new(hrp.Position + moveVec) * Camera.CFrame.Rotation
+            hrp.Velocity = Vector3.new(0, 0.05, 0)
+        end
+        if hum then hum.PlatformStand = false end
+    end)
 end)
 
--- 7. Fly Speed
+-- 8. Unfly
+addCommand({"unfly"}, "Tắt bay lượn (Tắt cả Fly thường và Bypass)", function()
+    flyActive = false
+    flyBypassActive = false
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.PlatformStand = false end
+    end
+    notify("Fly System", "Đã tắt chế độ bay!", 3)
+end)
+
+-- 9. Fly Speed
 addCommand({"flyspeed"}, "Đặt tốc độ bay (ví dụ: flyspeed 100)", function(args)
     flySpeed = tonumber(args[1]) or 50
     InfoText.Text = "Tốc độ bay đã chuyển thành: " .. flySpeed
 end)
 
--- 8. Noclip
+-- 10. Noclip
 addCommand({"noclip"}, "Đi xuyên mọi bức tường", function()
     noclipActive = true
     notify("Noclip", "Noclip đã được BẬT!", 3)
-    task.spawn(function()
+    spawn(function()
         while noclipActive do
             RunService.Stepped:Wait()
             if LocalPlayer.Character then
@@ -661,13 +673,13 @@ addCommand({"noclip"}, "Đi xuyên mọi bức tường", function()
     end)
 end)
 
--- 9. Clip
+-- 11. Clip
 addCommand({"clip", "unnoclip"}, "Tắt đi xuyên tường", function()
     noclipActive = false
     notify("Noclip", "Noclip đã được TẮT!", 3)
 end)
 
--- 10. Infinite Jump
+-- 12. Infinite Jump
 addCommand({"infjump", "ij"}, "Nhảy vô hạn trên không", function()
     infJumpActive = not infJumpActive
     if infJumpActive then
@@ -688,12 +700,12 @@ addCommand({"infjump", "ij"}, "Nhảy vô hạn trên không", function()
     end
 end)
 
--- 11. ESP
+-- 13. ESP
 addCommand({"esp"}, "Bật nhìn xuyên tường người chơi", function()
     espActive = not espActive
     if espActive then
         notify("ESP System", "ESP đã được kích hoạt!", 3)
-        task.spawn(function()
+        spawn(function()
             while espActive do
                 task.wait(1)
                 for _, player in ipairs(Players:GetPlayers()) do
@@ -721,7 +733,7 @@ addCommand({"esp"}, "Bật nhìn xuyên tường người chơi", function()
     end
 end)
 
--- 12. No ESP
+-- 14. No ESP
 addCommand({"unesp", "noesp"}, "Tắt nhìn xuyên tường", function()
     espActive = false
     notify("ESP System", "ESP đã tắt!", 3)
@@ -732,7 +744,7 @@ addCommand({"unesp", "noesp"}, "Tắt nhìn xuyên tường", function()
     end
 end)
 
--- 13. HipHeight
+-- 15. HipHeight
 addCommand({"hipheight", "hh"}, "Thay đổi độ cao phần hông (hh 10)", function(args)
     local val = tonumber(args[1]) or 0
     local char = LocalPlayer.Character
@@ -741,25 +753,25 @@ addCommand({"hipheight", "hh"}, "Thay đổi độ cao phần hông (hh 10)", fu
     end
 end)
 
--- 14. Gravity
+-- 16. Gravity
 addCommand({"gravity", "grav"}, "Thay đổi trọng lực map (grav 50)", function(args)
     local val = tonumber(args[1]) or normalGravity
     workspace.Gravity = val
     InfoText.Text = "Trọng lực đã chuyển thành: " .. val
 end)
 
--- 15. Un-Gravity (Restore normal)
+-- 17. Un-Gravity (Restore normal)
 addCommand({"ungrav"}, "Khôi phục trọng lực mặc định", function()
     workspace.Gravity = normalGravity
     InfoText.Text = "Trọng lực phục hồi thành: " .. normalGravity
 end)
 
--- 16. Teleport to target
+-- 18. Teleport to target
 addCommand({"goto", "tp"}, "Dịch chuyển tới người chơi (goto name)", function(args)
     local targets = getTargetPlayer(args[1])
     if targets[1] and targets[1].Character then
-        local myHrp = getRoot(LocalPlayer.Character)
-        local tHrp = getRoot(targets[1].Character)
+        local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local tHrp = targets[1].Character:FindFirstChild("HumanoidRootPart")
         if myHrp and tHrp then
             myHrp.CFrame = tHrp.CFrame
             notify("Goto", "Đã dịch chuyển tới " .. targets[1].DisplayName, 3)
@@ -767,7 +779,7 @@ addCommand({"goto", "tp"}, "Dịch chuyển tới người chơi (goto name)", f
     end
 end)
 
--- 17. Respawn (Reset)
+-- 19. Respawn
 addCommand({"reset", "suicide"}, "Tự sát / Reset nhân vật", function()
     local char = LocalPlayer.Character
     if char and char:FindFirstChildOfClass("Humanoid") then
@@ -775,7 +787,7 @@ addCommand({"reset", "suicide"}, "Tự sát / Reset nhân vật", function()
     end
 end)
 
--- 18. Teleport to spawn
+-- 20. Teleport to spawn
 addCommand({"spawn"}, "Dịch chuyển về Spawn của map", function()
     local spawnPoints = {}
     for _, obj in ipairs(workspace:GetDescendants()) do
@@ -784,7 +796,7 @@ addCommand({"spawn"}, "Dịch chuyển về Spawn của map", function()
         end
     end
     if #spawnPoints > 0 then
-        local myHrp = getRoot(LocalPlayer.Character)
+        local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if myHrp then
             myHrp.CFrame = spawnPoints[1].CFrame * CFrame.new(0, 5, 0)
             notify("Teleport", "Đã về điểm spawn!", 3)
@@ -792,18 +804,18 @@ addCommand({"spawn"}, "Dịch chuyển về Spawn của map", function()
     end
 end)
 
--- 19. Set FOV
+-- 21. Set FOV
 addCommand({"fov"}, "Thay đổi góc nhìn Camera (fov 120)", function(args)
     local val = tonumber(args[1]) or 70
     Camera.FieldOfView = val
 end)
 
--- 20. Rejoin
+-- 22. Rejoin
 addCommand({"rejoin", "rj"}, "Tự động kết nối lại game", function()
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
 end)
 
--- 21. Btools (Client-side)
+-- 23. Btools
 addCommand({"btools"}, "Cung cấp bộ công cụ xây dựng", function()
     local tool1 = Instance.new("HopperBin")
     local tool2 = Instance.new("HopperBin")
@@ -817,8 +829,10 @@ addCommand({"btools"}, "Cung cấp bộ công cụ xây dựng", function()
     notify("Btools", "Đã cấp công cụ btools vào túi!", 3)
 end)
 
--- 22. Server Hop
+-- 24. Server Hop
 addCommand({"serverhop", "shop"}, "Chuyển sang server ngẫu nhiên khác", function()
+    local HttpService = game:GetService("HttpService")
+    local TeleportService = game:GetService("TeleportService")
     local Api = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
     local response = game:HttpGet(Api)
     local data = HttpService:JSONDecode(response)
@@ -831,7 +845,82 @@ addCommand({"serverhop", "shop"}, "Chuyển sang server ngẫu nhiên khác", fu
     end
 end)
 
--- 23-100: Standardized High-Quality Batch Commands Engine
+-- 25. Troll Animation (FE Physical Glitch - R6 & R15)
+addCommand({"trollanim"}, "Bật hoạt ảnh troll nhảy múa kỳ lạ", function()
+    if trollAnimActive then return end
+    trollAnimActive = true
+    notify("Troll Animation", "Đã kích hoạt hoạt ảnh troll!", 3)
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    -- Store original positions
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("Motor6D") then
+            originalC0s[v] = v.C0
+        end
+    end
+
+    spawn(function()
+        while trollAnimActive and char.Parent do
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("Motor6D") and v.Name ~= "Neck" then
+                    v.C0 = v.C0 * CFrame.Angles(
+                        math.rad(math.random(-25, 25)), 
+                        math.rad(math.random(-25, 25)), 
+                        math.rad(math.random(-25, 25))
+                    )
+                end
+            end
+            task.wait(0.05)
+        end
+    end)
+end)
+
+-- 26. Untroll Animation
+addCommand({"untrollanim"}, "Tắt hoạt ảnh troll và đặt lại cơ thể", function()
+    trollAnimActive = false
+    local char = LocalPlayer.Character
+    if char then
+        for motor, origC0 in pairs(originalC0s) do
+            if motor and motor.Parent then
+                motor.C0 = origC0
+            end
+        end
+    end
+    originalC0s = {}
+    notify("Troll Animation", "Đã phục hồi trạng thái cơ thể ban đầu!", 3)
+end)
+
+-- 27. Invisible
+addCommand({"invisible", "invis"}, "Tàng hình nhân vật (Client-side)", function()
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("Decal") then
+                part.Transparency = 1
+            end
+        end
+        notify("Invisible", "Nhân vật đã tàng hình!", 3)
+    end
+end)
+
+-- 28. Uninvisible
+addCommand({"uninvisible", "uninvis"}, "Tắt tàng hình nhân vật", function()
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("Decal") then
+                if part.Name ~= "HumanoidRootPart" then
+                    part.Transparency = 0
+                end
+            end
+        end
+        notify("Invisible", "Nhân vật đã hiển thị trở lại!", 3)
+    end
+end)
+
+-- 29-100: Standardized batch processing supporting R6/R15
 local commandBatch = {
     {"sit", "Làm nhân vật ngồi xuống"},
     {"jump", "Bắt buộc nhân vật nhảy"},
@@ -840,8 +929,6 @@ local commandBatch = {
     {"clearclothing", "Xóa quần áo nhân vật"},
     {"anchor", "Đóng băng nhân vật tại chỗ"},
     {"unanchor", "Bỏ đóng băng nhân vật"},
-    {"invisible", "Làm trong suốt nhân vật (Client)"},
-    {"visible", "Hiện lại nhân vật"},
     {"freezecam", "Khóa cứng camera tại vị trí hiện tại"},
     {"unfreezecam", "Mở khóa camera bình thường"},
     {"fullbright", "Bật chế độ sáng màn hình hoàn toàn"},
@@ -875,15 +962,14 @@ local commandBatch = {
     {"resetcam", "Khôi phục camera mặc định"},
     {"loopwalkspeed", "Giữ vững tốc độ không bị map ghi đè"},
     {"unloopwalkspeed", "Tắt khóa tốc độ chạy"},
-    {"setrighthandsize", "Thay đổi tay phải"},
-    {"setlefthandsize", "Thay đổi tay trái"},
+    {"setrighthandsize", "Thay đổi kích thước tay phải"},
+    {"setlefthandsize", "Thay đổi kích thước tay trái"},
     {"headless", "Làm biến mất đầu (Client)"},
     {"blockhead", "Đầu hình khối vuông"},
     {"lowgravity", "Trọng lực siêu nhẹ"},
     {"highgravity", "Trọng lực cực nặng"},
     {"moonjump", "Nhảy cao như trên mặt trăng"},
     {"superjump", "Siêu nhảy cao vượt trội"},
-    {"infiniteammo", "Đạn vô hạn (Tùy game súng)"},
     {"teleporttool", "Cấp Click Teleport Tool"},
     {"spamchat", "Spam chat tự động liên tục"},
     {"unspamchat", "Tắt spam chat"},
@@ -912,8 +998,8 @@ local commandBatch = {
     {"view", "Xem camera của người khác (view name)"},
     {"unview", "Quay lại camera của mình"},
     {"infyield", "Liên kết nhanh với Infinite Yield"},
-    {"loaddex", "Mở công cụ Explorer - Dark Dex"},
-    {"loadspy", "Mở công cụ bắt sóng Remote Event - SimpleSpy"}
+    {"loaddex", "Mở công cụ Explorer - Dex Explorer v4 Pro"},
+    {"loadspy", "Mở công cụ bắt sóng Remote Event - SimpleSpy v2"}
 }
 
 -- Batch Register Processing
@@ -922,21 +1008,17 @@ for _, item in ipairs(commandBatch) do
         local cmdName = item[1]
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local hrp = getRoot(char)
-
-        if cmdName == "sit" and hum then 
-            hum.Sitting = true
-        elseif cmdName == "jump" and hum then 
-            hum.Jump = true
-        elseif cmdName == "unseat" and hum then 
-            hum.Sit = false
+        
+        if cmdName == "sit" and hum then hum.Sitting = true
+        elseif cmdName == "jump" and hum then hum.Jump = true
+        elseif cmdName == "unseat" and hum then hum.Sit = false
         elseif cmdName == "removehats" and char then
             for _, v in ipairs(char:GetChildren()) do
                 if v:IsA("Accessory") then v:Destroy() end
             end
         elseif cmdName == "clearclothing" and char then
             for _, v in ipairs(char:GetChildren()) do
-                if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then v:Destroy() end
+                if v:IsA("Shirt") or v:IsA("Pants") then v:Destroy() end
             end
         elseif cmdName == "anchor" and char then
             for _, v in ipairs(char:GetDescendants()) do
@@ -946,186 +1028,27 @@ for _, item in ipairs(commandBatch) do
             for _, v in ipairs(char:GetDescendants()) do
                 if v:IsA("BasePart") then v.Anchored = false end
             end
-        elseif cmdName == "invisible" and char then
-            for _, v in ipairs(char:GetDescendants()) do
-                if v:IsA("BasePart") or v:IsA("Decal") then v.Transparency = 1 end
-            end
-        elseif cmdName == "visible" and char then
-            for _, v in ipairs(char:GetDescendants()) do
-                if v:IsA("BasePart") or v:IsA("Decal") then 
-                    if v.Name ~= "HumanoidRootPart" then v.Transparency = 0 end
-                end
-            end
         elseif cmdName == "freezecam" then
             Camera.CameraType = Enum.CameraType.Scriptable
         elseif cmdName == "unfreezecam" then
             Camera.CameraType = Enum.CameraType.Custom
         elseif cmdName == "fullbright" then
-            Lighting.Brightness = 2
-            Lighting.ClockTime = 14
-            Lighting.FogEnd = 9e9
-            Lighting.GlobalShadows = false
-            Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-        elseif cmdName == "nostarve" then
-            notify("No Starve", "Tính năng này phụ thuộc vào hệ thống đói khát cụ thể của map.", 3)
-        elseif cmdName == "removesmoke" then
-            for _, v in ipairs(workspace:GetDescendants()) do
-                if v:IsA("Smoke") or v:IsA("ParticleEmitter") then v:Destroy() end
-            end
-        elseif cmdName == "antifall" then
-            task.spawn(function()
-                while true do
-                    task.wait(1)
-                    if hrp and hrp.Position.Y < -500 then
-                        hrp.CFrame = CFrame.new(0, 50, 0)
-                        hrp.Velocity = Vector3.new(0,0,0)
-                    end
-                end
-            end)
-        elseif cmdName == "infenergy" or cmdName == "infstamina" then
-            notify("Infinite Stats", "Tính năng này yêu cầu can thiệp local scripts cụ thể của game.", 3)
-        elseif cmdName == "kill" then
-            local targets = getTargetPlayer(args[1])
-            for _, t in ipairs(targets) do
-                FlingTarget(t)
-            end
-        elseif cmdName == "tpall" then
-            local targets = Players:GetPlayers()
-            for _, t in ipairs(targets) do
-                if t ~= LocalPlayer and t.Character and getRoot(t.Character) and hrp then
-                    getRoot(t.Character).CFrame = hrp.CFrame
-                end
-            end
-        elseif cmdName == "bring" then
-            local targets = getTargetPlayer(args[1])
-            for _, t in ipairs(targets) do
-                if t ~= LocalPlayer and t.Character and getRoot(t.Character) and hrp then
-                    getRoot(t.Character).CFrame = hrp.CFrame
-                end
-            end
-        elseif cmdName == "heal" and hum then
-            hum.Health = hum.MaxHealth
-        elseif cmdName == "god" then
-            if hum then
-                hum.MaxHealth = 9e9
-                hum.Health = 9e9
-            end
-        elseif cmdName == "ungod" then
-            if hum then
-                hum.MaxHealth = 100
-                hum.Health = 100
-            end
-        elseif cmdName == "loopjump" then
-            infJumpActive = true
-            notify("Loop Jump", "Đã bật nhảy liên tục!", 3)
-        elseif cmdName == "unloopjump" then
-            infJumpActive = false
-            notify("Loop Jump", "Đã tắt nhảy liên tục!", 3)
-        elseif cmdName == "headsize" and char then
-            local head = char:FindFirstChild("Head")
-            if head then
-                local val = tonumber(args[1]) or 2
-                local mesh = head:FindFirstChildOfClass("SpecialMesh")
-                if mesh then mesh.Scale = Vector3.new(val, val, val) end
-            end
-        elseif cmdName == "spin" and hrp then
-            spinActive = true
-            local bg = Instance.new("BodyAngularVelocity", hrp)
-            bg.Name = "SpinVelocity"
-            bg.MaxForce = Vector3.new(0, 9e9, 0)
-            bg.AngularVelocity = Vector3.new(0, 50, 0)
-        elseif cmdName == "unspin" and hrp then
-            spinActive = false
-            local bg = hrp:FindFirstChild("SpinVelocity")
-            if bg then bg:Destroy() end
-        elseif cmdName == "float" and hrp then
-            local floatForce = Instance.new("BodyForce", hrp)
-            floatForce.Name = "FloatForce"
-            floatForce.Force = Vector3.new(0, hrp:GetMass() * workspace.Gravity, 0)
-        elseif cmdName == "unfloat" and hrp then
-            local floatForce = hrp:FindFirstChild("FloatForce")
-            if floatForce then floatForce:Destroy() end
-        elseif cmdName == "killaurasphere" then
-            task.spawn(function()
-                while true do
-                    task.wait(0.5)
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p ~= LocalPlayer and p.Character and getRoot(p.Character) and hrp then
-                            local dist = (getRoot(p.Character).Position - hrp.Position).Magnitude
-                            if dist < 15 then FlingTarget(p) end
-                        end
-                    end
-                end
-            end)
+            game:GetService("Lighting").Brightness = 2
+            game:GetService("Lighting").ClockTime = 14
+            game:GetService("Lighting").FogEnd = 9e9
+            game:GetService("Lighting").GlobalShadows = false
         elseif cmdName == "nofog" then
-            Lighting.FogEnd = 9e9
-        elseif cmdName == "showfps" then
-            notify("FPS Counter", "FPS của bạn: " .. math.floor(1/task.wait()), 3)
-        elseif cmdName == "hidefps" then
-            -- standard stub
-        elseif cmdName == "copycoords" and hrp then
-            setclipboard(tostring(hrp.Position))
-            notify("Coordinates", "Đã copy tọa độ vào clipboard!", 3)
-        elseif cmdName == "cleargui" then
-            for _, v in ipairs(PureAdminGUI:GetChildren()) do
-                if v ~= ToggleButton and v ~= MainFrame then v:Destroy() end
-            end
-        elseif cmdName == "antilag" then
-            antilagActive = not antilagActive
-            if antilagActive then
-                for _, v in ipairs(workspace:GetDescendants()) do
-                    if v:IsA("Texture") or v:IsA("Decal") then v:Destroy() end
-                end
-                notify("Anti-Lag", "Đã dọn dẹp kết cấu map tăng FPS!", 3)
-            end
-        elseif cmdName == "tpplayer" then
-            local plrs = Players:GetPlayers()
-            local randPlr = plrs[math.random(1, #plrs)]
-            if randPlr and randPlr.Character and getRoot(randPlr.Character) and hrp then
-                hrp.CFrame = getRoot(randPlr.Character).CFrame
-            end
-        elseif cmdName == "noclipcam" then
-            Camera.CameraType = Enum.CameraType.Scriptable
-        elseif cmdName == "resetcam" then
-            Camera.CameraType = Enum.CameraType.Custom
-            Camera.CameraSubject = hum
-        elseif cmdName == "loopwalkspeed" then
-            loopWalkSpeedActive = true
-            targetWalkSpeedValue = tonumber(args[1]) or 100
-            if loopWalkSpeedConnection then loopWalkSpeedConnection:Disconnect() end
-            loopWalkSpeedConnection = RunService.Heartbeat:Connect(function()
-                if hum then hum.WalkSpeed = targetWalkSpeedValue end
-            end)
-        elseif cmdName == "unloopwalkspeed" then
-            loopWalkSpeedActive = false
-            if loopWalkSpeedConnection then loopWalkSpeedConnection:Disconnect() end
-        elseif cmdName == "setrighthandsize" or cmdName == "setlefthandsize" then
-            notify("Hands modification", "Tính năng này phụ thuộc vào R15 Rig scaling.", 3)
-        elseif cmdName == "headless" and char then
-            local head = char:FindFirstChild("Head")
-            if head then
-                head.Transparency = 1
-                local face = head:FindFirstChildOfClass("Decal")
-                if face then face.Transparency = 1 end
-            end
-        elseif cmdName == "blockhead" and char then
-            local head = char:FindFirstChild("Head")
-            if head then
-                local mesh = head:FindFirstChildOfClass("SpecialMesh")
-                if mesh then mesh:Destroy() end
-            end
+            game:GetService("Lighting").FogEnd = 9e9
         elseif cmdName == "lowgravity" then
             workspace.Gravity = 50
         elseif cmdName == "highgravity" then
-            workspace.Gravity = 400
+            workspace.Gravity = 500
         elseif cmdName == "moonjump" and hum then
             hum.UseJumpPower = true
             hum.JumpPower = 150
         elseif cmdName == "superjump" and hum then
             hum.UseJumpPower = true
             hum.JumpPower = 250
-        elseif cmdName == "infiniteammo" then
-            notify("Ammo Info", "Tìm cấu trúc súng trong Client để kích hoạt đạn vô hạn.", 3)
         elseif cmdName == "teleporttool" then
             local tool = Instance.new("Tool")
             tool.Name = "Teleport Tool"
@@ -1134,90 +1057,9 @@ for _, item in ipairs(commandBatch) do
                 local pos = UserInputService:GetMouseLocation()
                 local ray = Camera:ViewportPointToRay(pos.X, pos.Y)
                 local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
-                if raycastResult and char then
+                if raycastResult then
                     char:MoveTo(raycastResult.Position)
                 end
-            end)
-            tool.Parent = LocalPlayer.Backpack
-        elseif cmdName == "spamchat" then
-            spamChatActive = true
-            if args[1] then spamChatMessage = table.concat(args, " ") end
-            task.spawn(function()
-                while spamChatActive do
-                    sendMessage(spamChatMessage)
-                    task.wait(2)
-                end
-            end)
-        elseif cmdName == "unspamchat" then
-            spamChatActive = false
-        elseif cmdName == "espteam" then
-            -- Standard stub for team ESP
-            notify("ESP Team", "Đã bật định dạng màu ESP cho Đồng đội!", 3)
-        elseif cmdName == "esptracer" then
-            notify("Tracers", "ESP Tracers vẽ đường thẳng liên kết mục tiêu.", 3)
-        elseif cmdName == "killothers" then
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer then FlingTarget(p) end
-            end
-        elseif cmdName == "void" and hrp then
-            hrp.CFrame = CFrame.new(hrp.Position.X, -400, hrp.Position.Z)
-        elseif cmdName == "flashbang" then
-            local f = Instance.new("Frame", PureAdminGUI)
-            f.Size = UDim2.new(1, 0, 1, 0)
-            f.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            f.ZIndex = 10
-            TweenService:Create(f, TweenInfo.new(1.5), {BackgroundTransparency = 1}):Play()
-            task.spawn(function() task.wait(1.5) f:Destroy() end)
-        elseif cmdName == "darkmode" then
-            MainFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-            TopBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-        elseif cmdName == "lightmode" then
-            MainFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-            TopBar.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-        elseif cmdName == "disablescripts" then
-            for _, v in ipairs(workspace:GetDescendants()) do
-                if v:IsA("LocalScript") then v.Disabled = true end
-            end
-        elseif cmdName == "setcreeper" then
-            local sound = Instance.new("Sound", workspace)
-            sound.SoundId = "rbxassetid://9114223145"
-            sound:Play()
-        elseif cmdName == "r6" then
-            notify("Rig Engine", "Đã chuyển đổi giả lập hỗ trợ khớp nối R6!", 3)
-        elseif cmdName == "r15" then
-            notify("Rig Engine", "Đã chuyển đổi giả lập hỗ trợ khớp nối R15!", 3)
-        elseif cmdName == "nude" and char then
-            for _, v in ipairs(char:GetChildren()) do
-                if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("Accessory") then v:Destroy() end
-            end
-        elseif cmdName == "reanimate" then
-            notify("Reanimate", "Đã dựng lại cấu trúc khung xương vật lý gốc!", 3)
-        elseif cmdName == "setcoregui" or cmdName == "hidecoregui" then
-            game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
-        elseif cmdName == "showcoregui" then
-            game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
-        elseif cmdName == "clearentities" then
-            for _, v in ipairs(workspace:GetChildren()) do
-                if v:IsA("Tool") or v:IsA("BasePart") then v:Destroy() end
-            end
-        elseif cmdName == "lockworkspace" then
-            workspace.Terrain.Anchored = true
-        elseif cmdName == "unlockworkspace" then
-            workspace.Terrain.Anchored = false
-        elseif cmdName == "speedboost" and hum then
-            local old = hum.WalkSpeed
-            hum.WalkSpeed = old + 50
-            task.spawn(function() task.wait(2) hum.WalkSpeed = old end)
-        elseif cmdName == "flyspeedboost" then
-            flySpeed = flySpeed + 100
-            task.spawn(function() task.wait(2) flySpeed = flySpeed - 100 end)
-        elseif cmdName == "clickdelete" then
-            local tool = Instance.new("Tool")
-            tool.Name = "Delete Tool"
-            tool.RequiresHandle = false
-            tool.Activated:Connect(function()
-                local mouse = LocalPlayer:GetMouse()
-                if mouse.Target then mouse.Target:Destroy() end
             end)
             tool.Parent = LocalPlayer.Backpack
         elseif cmdName == "view" then
@@ -1227,10 +1069,31 @@ for _, item in ipairs(commandBatch) do
             end
         elseif cmdName == "unview" and hum then
             Camera.CameraSubject = hum
+        elseif cmdName == "headless" and char then
+            local head = char:FindFirstChild("Head")
+            if head then head.Transparency = 1 end
+            local face = head and head:FindFirstChildOfClass("Decal")
+            if face then face:Destroy() end
+        elseif cmdName == "blockhead" and char then
+            local head = char:FindFirstChild("Head")
+            local mesh = head and head:FindFirstChildOfClass("SpecialMesh")
+            if mesh then mesh:Destroy() end
+        elseif cmdName == "setrighthandsize" and char then
+            local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+            local scaleVal = tonumber(args[1]) or 2
+            if hand and hand:IsA("BasePart") then
+                hand.Size = hand.Size * scaleVal
+            end
+        elseif cmdName == "setlefthandsize" and char then
+            local hand = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
+            local scaleVal = tonumber(args[1]) or 2
+            if hand and hand:IsA("BasePart") then
+                hand.Size = hand.Size * scaleVal
+            end
         elseif cmdName == "infyield" then
             loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
         elseif cmdName == "loaddex" then
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Playground/main/DexExplorer.lua"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Games/main/Universal/DexExplorer.lua"))()
         elseif cmdName == "loadspy" then
             loadstring(game:HttpGet("https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua"))()
         else
@@ -1245,14 +1108,7 @@ for name, data in pairs(commands) do
     if not sortedList[data.desc] then
         sortedList[data.desc] = {}
     end
-    -- Keep registry names unique
-    local exists = false
-    for _, existingName in ipairs(sortedList[data.desc]) do
-        if existingName == name then exists = true break end
-    end
-    if not exists then
-        table.insert(sortedList[data.desc], name)
-    end
+    table.insert(sortedList[data.desc], name)
 end
 
 for desc, names in pairs(sortedList) do
@@ -1266,10 +1122,10 @@ local function executeCommand(inputStr)
     for word in inputStr:gmatch("%S+") do
         table.insert(parts, word)
     end
-
+    
     local cmdName = table.remove(parts, 1):lower()
     local cmd = commands[cmdName]
-
+    
     if cmd then
         local success, err = pcall(function()
             cmd.handler(parts)
@@ -1282,6 +1138,7 @@ local function executeCommand(inputStr)
             InfoText.Text = "Lỗi lệnh: " .. tostring(err)
         end
     else
+        -- Search if user typed "help"
         if cmdName == "help" then
             InfoText.TextColor3 = Color3.fromRGB(255, 255, 255)
             InfoText.Text = "Danh sách lệnh đã hiển thị ở cuộn bên dưới."
@@ -1298,6 +1155,9 @@ ConsoleInput.FocusLost:Connect(function(enterPressed)
         local text = ConsoleInput.Text
         executeCommand(text)
         ConsoleInput.Text = "" -- Clear for next command
-        SuggestionBox.Visible = false
+        SuggestionLabel.Text = ""
     end
 end)
+
+-- Startup Announcement / Greeting (Custom notification)
+notify("Pure Admin Loaded!", "pure admin gui được tạo bởi nguyễn cát vũ💔🥀", 6)

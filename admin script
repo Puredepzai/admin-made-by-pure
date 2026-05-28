@@ -99,12 +99,12 @@ ToggleStroke.Color = Color3.fromRGB(0, 170, 255)
 ToggleStroke.Thickness = 2
 ToggleStroke.Parent = ToggleButton
 
--- Main UI Frame
+-- Main UI Frame (Resized to accommodate 2 panels side-by-side)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = PureAdminGUI
-MainFrame.Size = UDim2.new(0, 550, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -275, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 680, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -340, 0.5, -190)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -144,7 +144,6 @@ local TopBarCorner = Instance.new("UICorner")
 TopBarCorner.CornerRadius = UDim.new(0, 12)
 TopBarCorner.Parent = TopBar
 
--- Cover corners at bottom of top bar
 local TopBarCover = Instance.new("Frame")
 TopBarCover.Size = UDim2.new(1, 0, 0.5, 0)
 TopBarCover.Position = UDim2.new(0, 0, 0.5, 0)
@@ -180,11 +179,33 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 8)
 CloseCorner.Parent = CloseButton
 
--- Input Box Container
+-- ==================== NEW 2-COLUMN LAYOUT STRUCTURE ====================
+
+-- 1. LEFT COLUMN (Command Input Console & Commands List)
+local LeftColumn = Instance.new("Frame")
+LeftColumn.Name = "LeftColumn"
+LeftColumn.Parent = MainFrame
+LeftColumn.Size = UDim2.new(0.5, -20, 1, -110)
+LeftColumn.Position = UDim2.new(0, 15, 0, 55)
+LeftColumn.BackgroundTransparency = 1
+LeftColumn.ZIndex = 2
+
+local LeftTitle = Instance.new("TextLabel")
+LeftTitle.Parent = LeftColumn
+LeftTitle.Size = UDim2.new(1, 0, 0, 20)
+LeftTitle.Position = UDim2.new(0, 0, 0, 0)
+LeftTitle.BackgroundTransparency = 1
+LeftTitle.Text = "NHẬP LỆNH HỆ THỐNG"
+LeftTitle.TextColor3 = Color3.fromRGB(0, 170, 255)
+LeftTitle.Font = Enum.Font.GothamBold
+LeftTitle.TextSize = 12
+LeftTitle.TextXAlignment = Enum.TextXAlignment.Left
+LeftTitle.ZIndex = 2
+
 local InputContainer = Instance.new("Frame")
-InputContainer.Parent = MainFrame
-InputContainer.Size = UDim2.new(1, -30, 0, 40)
-InputContainer.Position = UDim2.new(0, 15, 0, 60)
+InputContainer.Parent = LeftColumn
+InputContainer.Size = UDim2.new(1, 0, 0, 40)
+InputContainer.Position = UDim2.new(0, 0, 0, 25)
 InputContainer.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 InputContainer.ZIndex = 2
 
@@ -197,7 +218,6 @@ InputStroke.Color = Color3.fromRGB(40, 40, 40)
 InputStroke.Thickness = 1
 InputStroke.Parent = InputContainer
 
--- Command Suggestion Label (Behind Input)
 local SuggestionLabel = Instance.new("TextLabel")
 SuggestionLabel.Parent = InputContainer
 SuggestionLabel.Size = UDim2.new(1, -20, 1, 0)
@@ -215,7 +235,7 @@ ConsoleInput.Parent = InputContainer
 ConsoleInput.Size = UDim2.new(1, -20, 1, 0)
 ConsoleInput.Position = UDim2.new(0, 10, 0, 0)
 ConsoleInput.BackgroundTransparency = 1
-ConsoleInput.PlaceholderText = "Nhập lệnh vào đây (ví dụ: speed 100, fly, fling)..."
+ConsoleInput.PlaceholderText = "Nhập lệnh vào đây (ví dụ: speed 100, fly)..."
 ConsoleInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
 ConsoleInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 ConsoleInput.Font = Enum.Font.Code
@@ -224,11 +244,10 @@ ConsoleInput.TextXAlignment = Enum.TextXAlignment.Left
 ConsoleInput.ClearTextOnFocus = false
 ConsoleInput.ZIndex = 3
 
--- Scrollable Command List Frame
 local ScrollContainer = Instance.new("ScrollingFrame")
-ScrollContainer.Parent = MainFrame
-ScrollContainer.Size = UDim2.new(1, -30, 1, -170)
-ScrollContainer.Position = UDim2.new(0, 15, 0, 110)
+ScrollContainer.Parent = LeftColumn
+ScrollContainer.Size = UDim2.new(1, 0, 1, -75)
+ScrollContainer.Position = UDim2.new(0, 0, 0, 75)
 ScrollContainer.BackgroundTransparency = 1
 ScrollContainer.ScrollBarThickness = 4
 ScrollContainer.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
@@ -240,12 +259,449 @@ ScrollLayout.Parent = ScrollContainer
 ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ScrollLayout.Padding = UDim.new(0, 5)
 
--- Auto Update Scrolling Canvas Size safely to prevent UI overlaps or infinite layout calculations
 ScrollLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     ScrollContainer.CanvasSize = UDim2.new(0, 0, 0, ScrollLayout.AbsoluteContentSize.Y)
 end)
 
--- Output/Info Console inside GUI
+
+-- 2. RIGHT COLUMN (Settings & Customizations Control Panel)
+local RightColumn = Instance.new("Frame")
+RightColumn.Name = "RightColumn"
+RightColumn.Parent = MainFrame
+RightColumn.Size = UDim2.new(0.5, -20, 1, -110)
+RightColumn.Position = UDim2.new(0.5, 5, 0, 55)
+RightColumn.BackgroundTransparency = 1
+RightColumn.ZIndex = 2
+
+local RightTitle = Instance.new("TextLabel")
+RightTitle.Parent = RightColumn
+RightTitle.Size = UDim2.new(1, 0, 0, 20)
+RightTitle.Position = UDim2.new(0, 0, 0, 0)
+RightTitle.BackgroundTransparency = 1
+RightTitle.Text = "CÀI ĐẶT HỆ THỐNG"
+RightTitle.TextColor3 = Color3.fromRGB(0, 170, 255)
+RightTitle.Font = Enum.Font.GothamBold
+RightTitle.TextSize = 12
+RightTitle.TextXAlignment = Enum.TextXAlignment.Left
+RightTitle.ZIndex = 2
+
+local SettingsScroll = Instance.new("ScrollingFrame")
+SettingsScroll.Parent = RightColumn
+SettingsScroll.Size = UDim2.new(1, 0, 1, -25)
+SettingsScroll.Position = UDim2.new(0, 0, 0, 25)
+SettingsScroll.BackgroundTransparency = 1
+SettingsScroll.ScrollBarThickness = 4
+SettingsScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
+SettingsScroll.CanvasSize = UDim2.new(0, 0, 0, 360)
+SettingsScroll.ZIndex = 2
+
+local SettingsLayout = Instance.new("UIListLayout")
+SettingsLayout.Parent = SettingsScroll
+SettingsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+SettingsLayout.Padding = UDim.new(0, 10)
+
+SettingsLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    SettingsScroll.CanvasSize = UDim2.new(0, 0, 0, SettingsLayout.AbsoluteContentSize.Y)
+end)
+
+-- Helper: Create visual block inside settings pane
+local function createSettingContainer(parent, titleText, height)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, -10, 0, height or 65)
+    Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    Frame.ZIndex = 2
+    Frame.Parent = parent
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.Parent = Frame
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = Color3.fromRGB(35, 35, 35)
+    Stroke.Thickness = 1
+    Stroke.Parent = Frame
+
+    local Lbl = Instance.new("TextLabel")
+    Lbl.Size = UDim2.new(1, -20, 0, 20)
+    Lbl.Position = UDim2.new(0, 10, 0, 5)
+    Lbl.BackgroundTransparency = 1
+    Lbl.Text = titleText
+    Lbl.Font = Enum.Font.GothamBold
+    Lbl.TextSize = 11
+    Lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+    Lbl.TextXAlignment = Enum.TextXAlignment.Left
+    Lbl.ZIndex = 3
+    Lbl.Parent = Frame
+
+    return Frame
+end
+
+-- ==================== NEW AIMBOT & RED FOV CIRCLE SYSTEM ====================
+local aimbotActive = false
+local aimbotRadius = 100
+local targetPartName = "Head"
+
+-- Tạo vòng tròn đỏ
+local FOVCircle = nil
+pcall(function()
+    FOVCircle = Drawing.new("Circle")
+    FOVCircle.Color = Color3.fromRGB(255, 0, 0)
+    FOVCircle.Thickness = 1.5
+    FOVCircle.NumSides = 64
+    FOVCircle.Radius = aimbotRadius
+    FOVCircle.Filled = false
+    FOVCircle.Visible = false
+end)
+
+-- HÀM TÌM NGƯỜI Ở GẦN TÂM MÀN HÌNH NHẤT
+local function getClosestPlayerToCenter()
+    local target = nil
+    local maxDist = aimbotRadius
+    -- Lấy vị trí chính giữa màn hình (X chia đôi, Y chia đôi)
+    local centerPosition = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild(targetPartName) then
+            local part = p.Character[targetPartName]
+            local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+            
+            if onScreen then
+                -- Tính khoảng cách từ đối thủ đến GIỮA MÀN HÌNH
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - centerPosition).Magnitude
+                if dist < maxDist then
+                    maxDist = dist
+                    target = part
+                end
+            end
+        end
+    end
+    return target
+end
+
+-- VÒNG LẶP KHÓA CỨNG TÂM Ở GIỮA
+RunService.RenderStepped:Connect(function()
+    -- Luôn tính tâm màn hình ở đây
+    local centerPosition = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
+    if FOVCircle then
+        FOVCircle.Radius = aimbotRadius
+        FOVCircle.Position = centerPosition -- Ép vòng tròn đỏ nằm im ở giữa màn hình
+        FOVCircle.Visible = aimbotActive
+    end
+
+    if aimbotActive then
+        local target = getClosestPlayerToCenter()
+        if target then
+            -- Tự động quay camera thẳng vào mục tiêu
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+        end
+    end
+end)
+
+
+-- Setting UI: Aimbot controls
+local AimbotBlock = createSettingContainer(SettingsScroll, "BẢN ĐỒ TÂM - AIMBOT", 110)
+
+-- Toggle button
+local AimbotToggleBtn = Instance.new("TextButton")
+AimbotToggleBtn.Size = UDim2.new(0.45, 0, 0, 30)
+AimbotToggleBtn.Position = UDim2.new(0, 10, 0, 30)
+AimbotToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+AimbotToggleBtn.Text = "BẬT AIMBOT: OFF"
+AimbotToggleBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
+AimbotToggleBtn.Font = Enum.Font.GothamBold
+AimbotToggleBtn.TextSize = 11
+AimbotToggleBtn.ZIndex = 3
+AimbotToggleBtn.Parent = AimbotBlock
+
+local AimbotCorner = Instance.new("UICorner")
+AimbotCorner.CornerRadius = UDim.new(0, 6)
+AimbotCorner.Parent = AimbotToggleBtn
+
+AimbotToggleBtn.MouseButton1Click:Connect(function()
+    aimbotActive = not aimbotActive
+    if aimbotActive then
+        AimbotToggleBtn.Text = "BẬT AIMBOT: ON"
+        AimbotToggleBtn.TextColor3 = Color3.fromRGB(0, 200, 120)
+    else
+        AimbotToggleBtn.Text = "BẬT AIMBOT: OFF"
+        AimbotToggleBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
+    end
+end)
+
+-- Radius (FOV) Size Text Input
+local RadiusInput = Instance.new("TextBox")
+RadiusInput.Size = UDim2.new(0.45, 0, 0, 30)
+RadiusInput.Position = UDim2.new(0.52, 0, 0, 30)
+RadiusInput.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+RadiusInput.PlaceholderText = "Vòng tâm (Radius): 100"
+RadiusInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+RadiusInput.Text = "100"
+RadiusInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+RadiusInput.Font = Enum.Font.Gotham
+RadiusInput.TextSize = 11
+RadiusInput.ZIndex = 3
+RadiusInput.Parent = AimbotBlock
+
+local RadiusCorner = Instance.new("UICorner")
+RadiusCorner.CornerRadius = UDim.new(0, 6)
+RadiusCorner.Parent = RadiusInput
+
+RadiusInput.FocusLost:Connect(function()
+    local val = tonumber(RadiusInput.Text)
+    if val then
+        aimbotRadius = val
+    else
+        RadiusInput.Text = tostring(aimbotRadius)
+    end
+end)
+
+-- Target Mode Button
+local TargetPartBtn = Instance.new("TextButton")
+TargetPartBtn.Size = UDim2.new(0.94, 0, 0, 25)
+TargetPartBtn.Position = UDim2.new(0, 10, 0, 70)
+TargetPartBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TargetPartBtn.Text = "MỤC TIÊU KHÓA: HEAD"
+TargetPartBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
+TargetPartBtn.Font = Enum.Font.GothamBold
+TargetPartBtn.TextSize = 10
+TargetPartBtn.ZIndex = 3
+TargetPartBtn.Parent = AimbotBlock
+
+local TargetPartCorner = Instance.new("UICorner")
+TargetPartCorner.CornerRadius = UDim.new(0, 4)
+TargetPartCorner.Parent = TargetPartBtn
+
+TargetPartBtn.MouseButton1Click:Connect(function()
+    if targetPartName == "Head" then
+        targetPartName = "HumanoidRootPart"
+        TargetPartBtn.Text = "MỤC TIÊU KHÓA: BODY (HRP)"
+    else
+        targetPartName = "Head"
+        TargetPartBtn.Text = "MỤC TIÊU KHÓA: HEAD"
+    end
+end)
+
+
+-- ==================== MOBILE JUMP BUTTON UNLOCK & INJECTOR ====================
+local customJumpBtn = nil
+
+local function toggleCustomJumpButton(state)
+    if state then
+        if customJumpBtn then customJumpBtn.Visible = true return end
+        
+        customJumpBtn = Instance.new("TextButton")
+        customJumpBtn.Name = "PA_MobileJump"
+        customJumpBtn.Parent = PureAdminGUI
+        customJumpBtn.Size = UDim2.new(0, 65, 0, 65)
+        customJumpBtn.Position = UDim2.new(0.85, -20, 0.6, 0)
+        customJumpBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        customJumpBtn.BorderSizePixel = 0
+        customJumpBtn.Text = "JUMP"
+        customJumpBtn.Font = Enum.Font.GothamBold
+        customJumpBtn.TextSize = 14
+        customJumpBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
+        customJumpBtn.ZIndex = 10
+        makeDraggable(customJumpBtn)
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 32.5)
+        Corner.Parent = customJumpBtn
+
+        local Stroke = Instance.new("UIStroke")
+        Stroke.Color = Color3.fromRGB(0, 170, 255)
+        Stroke.Thickness = 2
+        Stroke.Parent = customJumpBtn
+
+        customJumpBtn.MouseButton1Down:Connect(function()
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.Jump = true
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        if customJumpBtn then
+            customJumpBtn.Visible = false
+        end
+    end
+end
+
+local function unlockDefaultJump()
+    pcall(function()
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.JumpHeight = 7.2 -- default
+            hum.JumpPower = 50 -- default
+            hum.UseJumpPower = true
+        end
+        local controls = LocalPlayer:FindFirstChild("PlayerScripts"):FindFirstChild("PlayerModule")
+        if controls then
+            local activeController = require(controls):GetControls()
+            if activeController then
+                activeController:Enable(true)
+            end
+        end
+    end)
+end
+
+-- Setting UI: Jump Button Controls
+local JumpBlock = createSettingContainer(SettingsScroll, "NÚT NHẢY DI ĐỘNG (JUMP BUTTON)", 110)
+
+local CustomJumpToggle = Instance.new("TextButton")
+CustomJumpToggle.Size = UDim2.new(0.94, 0, 0, 30)
+CustomJumpToggle.Position = UDim2.new(0, 10, 0, 30)
+CustomJumpToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+CustomJumpToggle.Text = "HIỆN NÚT NHẢY MỚI: TẮT"
+CustomJumpToggle.TextColor3 = Color3.fromRGB(255, 75, 75)
+CustomJumpToggle.Font = Enum.Font.GothamBold
+CustomJumpToggle.TextSize = 11
+CustomJumpToggle.ZIndex = 3
+CustomJumpToggle.Parent = JumpBlock
+
+local CustomJumpCorner = Instance.new("UICorner")
+CustomJumpCorner.CornerRadius = UDim.new(0, 6)
+CustomJumpCorner.Parent = CustomJumpToggle
+
+local customJumpActive = false
+CustomJumpToggle.MouseButton1Click:Connect(function()
+    customJumpActive = not customJumpActive
+    toggleCustomJumpButton(customJumpActive)
+    if customJumpActive then
+        CustomJumpToggle.Text = "HIỆN NÚT NHẢY MỚI: BẬT"
+        CustomJumpToggle.TextColor3 = Color3.fromRGB(0, 200, 120)
+    else
+        CustomJumpToggle.Text = "HIỆN NÚT NHẢY MỚI: TẮT"
+        CustomJumpToggle.TextColor3 = Color3.fromRGB(255, 75, 75)
+    end
+end)
+
+local UnlockJumpBtn = Instance.new("TextButton")
+UnlockJumpBtn.Size = UDim2.new(0.94, 0, 0, 30)
+UnlockJumpBtn.Position = UDim2.new(0, 10, 0, 70)
+UnlockJumpBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+UnlockJumpBtn.Text = "MỞ KHÓA NÚT NHẢY MẶC ĐỊNH"
+UnlockJumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+UnlockJumpBtn.Font = Enum.Font.GothamBold
+UnlockJumpBtn.TextSize = 11
+UnlockJumpBtn.ZIndex = 3
+UnlockJumpBtn.Parent = JumpBlock
+
+local UnlockJumpCorner = Instance.new("UICorner")
+UnlockJumpCorner.CornerRadius = UDim.new(0, 6)
+UnlockJumpCorner.Parent = UnlockJumpBtn
+
+UnlockJumpBtn.MouseButton1Click:Connect(function()
+    unlockDefaultJump()
+end)
+
+
+-- ==================== SYSTEM COLOR THEME & INTERFACE OPTION ====================
+local function applyNewThemeColor(color)
+    ToggleStroke.Color = color
+    ToggleButton.TextColor3 = color
+    LeftTitle.TextColor3 = color
+    RightTitle.TextColor3 = color
+    MainStroke.Color = color
+    ScrollContainer.ScrollBarImageColor3 = color
+    SettingsScroll.ScrollBarImageColor3 = color
+    UnlockJumpBtn.BackgroundColor3 = color
+end
+
+local ThemeBlock = createSettingContainer(SettingsScroll, "TÙY CHỈNH MÀU SẮC GIAO DIỆN (THEME)", 75)
+
+local ThemeInput = Instance.new("TextBox")
+ThemeInput.Size = UDim2.new(0.94, 0, 0, 30)
+ThemeInput.Position = UDim2.new(0, 10, 0, 30)
+ThemeInput.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ThemeInput.PlaceholderText = "Nhập màu RGB (ví dụ: 255,0,0 hoặc 0,255,100)..."
+ThemeInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+ThemeInput.Text = "0,170,255"
+ThemeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+ThemeInput.Font = Enum.Font.Gotham
+ThemeInput.TextSize = 11
+ThemeInput.ZIndex = 3
+ThemeInput.Parent = ThemeBlock
+
+local ThemeCorner = Instance.new("UICorner")
+ThemeCorner.CornerRadius = UDim.new(0, 6)
+ThemeCorner.Parent = ThemeInput
+
+ThemeInput.FocusLost:Connect(function()
+    local input = ThemeInput.Text
+    local r, g, b = input:match("(%d+),%s*(%d+),%s*(%d+)")
+    if r and g and b then
+        local targetColor = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
+        applyNewThemeColor(targetColor)
+    end
+end)
+
+
+-- ==================== BACKGROUND CUSTOM IMAGE CODES ====================
+local BackgroundBlock = createSettingContainer(SettingsScroll, "TÙY CHỈNH ẢNH NỀN HỆ THỐNG", 75)
+
+local BgImageInput = Instance.new("TextBox")
+BgImageInput.Size = UDim2.new(0.94, 0, 0, 30)
+BgImageInput.Position = UDim2.new(0, 10, 0, 30)
+BgImageInput.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+BgImageInput.PlaceholderText = "Nhập Asset ID hình nền..."
+BgImageInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+BgImageInput.Text = ""
+BgImageInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+BgImageInput.Font = Enum.Font.Gotham
+BgImageInput.TextSize = 11
+BgImageInput.ZIndex = 3
+BgImageInput.Parent = BackgroundBlock
+
+local BgImageCorner = Instance.new("UICorner")
+BgImageCorner.CornerRadius = UDim.new(0, 6)
+BgImageCorner.Parent = BgImageInput
+
+BgImageInput.FocusLost:Connect(function()
+    local assetId = tonumber(BgImageInput.Text)
+    if assetId then
+        BackgroundImage.Image = "rbxassetid://" .. assetId
+    else
+        BackgroundImage.Image = ""
+    end
+end)
+
+
+-- ==================== TOGGLE GUI CONTROL PANEL ====================
+local ToggleUIBlock = createSettingContainer(SettingsScroll, "PHÍM TẮT ĐÓNG / MỞ BẢNG ĐIỀU KHIỂN", 75)
+
+local ToggleUIBtn = Instance.new("TextButton")
+ToggleUIBtn.Size = UDim2.new(0.94, 0, 0, 30)
+ToggleUIBtn.Position = UDim2.new(0, 10, 0, 30)
+ToggleUIBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleUIBtn.Text = "ẨN NÚT TRÒN (TOGGLE BUTTON): HIỆN"
+ToggleUIBtn.TextColor3 = Color3.fromRGB(0, 200, 120)
+ToggleUIBtn.Font = Enum.Font.GothamBold
+ToggleUIBtn.TextSize = 11
+ToggleUIBtn.ZIndex = 3
+ToggleUIBtn.Parent = ToggleUIBlock
+
+local ToggleUICorner = Instance.new("UICorner")
+ToggleUICorner.CornerRadius = UDim.new(0, 6)
+ToggleUICorner.Parent = ToggleUIBtn
+
+local showFloatingButton = true
+ToggleUIBtn.MouseButton1Click:Connect(function()
+    showFloatingButton = not showFloatingButton
+    ToggleButton.Visible = showFloatingButton
+    if showFloatingButton then
+        ToggleUIBtn.Text = "ẨN NÚT TRÒN (TOGGLE BUTTON): HIỆN"
+        ToggleUIBtn.TextColor3 = Color3.fromRGB(0, 200, 120)
+    else
+        ToggleUIBtn.Text = "ẨN NÚT TRÒN (TOGGLE BUTTON): ẨN"
+        ToggleUIBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
+    end
+end)
+
+
+-- ==================== INFO CONSOLE AT BOTTOM ====================
 local InfoText = Instance.new("TextLabel")
 InfoText.Parent = MainFrame
 InfoText.Size = UDim2.new(1, -30, 0, 40)
@@ -258,6 +714,7 @@ InfoText.TextSize = 12
 InfoText.TextXAlignment = Enum.TextXAlignment.Left
 InfoText.TextWrapped = true
 InfoText.ZIndex = 2
+
 
 -- Dynamic Custom Notifications
 local function notify(title, text, duration)
@@ -329,8 +786,8 @@ local function toggleUI()
         -- Open Animation
         MainFrame.Visible = true
         TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 550, 0, 350),
-            Position = UDim2.new(0.5, -275, 0.5, -175)
+            Size = UDim2.new(0, 680, 0, 380),
+            Position = UDim2.new(0.5, -340, 0.5, -190)
         }):Play()
     end
     isOpened = not isOpened
@@ -484,7 +941,6 @@ local function startFly()
     flyActive = true
     hum.PlatformStand = true
     
-    -- High compatibility legacy physics bodies (Perfect for all mobile executors)
     flyVelocity = Instance.new("BodyVelocity")
     flyVelocity.Name = "PureAdmin_FlyVelocity"
     flyVelocity.Velocity = Vector3.new(0, 0, 0)
@@ -513,7 +969,6 @@ local function startFly()
         local velocity = Vector3.new(0, 0, 0)
         
         if moveDirection.Magnitude > 0 then
-            -- Projects direction relative to Camera orientation (Up/Down/Left/Right)
             local localMove = camCFrame:VectorToObjectSpace(moveDirection)
             local flyDir = (camCFrame.LookVector * -localMove.Z) + (camCFrame.RightVector * localMove.X)
             if flyDir.Magnitude > 0 then
@@ -525,7 +980,6 @@ local function startFly()
         end
         
         if flyBypassActive then
-            -- Safe oscillation & CFrame increment to fully bypass anti-cheats
             currentHrp.Velocity = Vector3.new(0, 0, 0)
             currentHrp.CFrame = currentHrp.CFrame + (velocity * 0.016)
             if flyVelocity then
@@ -594,7 +1048,6 @@ local function SkidFling(TargetPlayer)
         if not targetHrp or not targetHrp.Parent or not targetHum or targetHum.Health <= 0 then break end
         if not hrp or not hrp.Parent then break end
         
-        -- High angular/linear velocity to impact momentum
         pcall(function()
             hrp.Velocity = Vector3.new(9e7, 9e7, 9e7)
             hrp.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
@@ -608,7 +1061,6 @@ local function SkidFling(TargetPlayer)
     steppedConn:Disconnect()
     getgenv().FlingActive = false
     
-    -- Safe restoration
     if hrp and hrp.Parent then
         pcall(function()
             hrp.Velocity = Vector3.new(0, 0, 0)
@@ -907,7 +1359,6 @@ addCommand({"trollanim"}, "Bật hoạt ảnh troll nhảy múa kỳ lạ", func
     local char = LocalPlayer.Character
     if not char then return end
 
-    -- Store original positions
     for _, v in ipairs(char:GetDescendants()) do
         if v:IsA("Motor6D") then
             originalC0s[v] = v.C0
@@ -997,7 +1448,7 @@ addCommand({"unflybypass", "noflybypass"}, "Tắt chế độ bay lách Anti-Che
 end)
 
 
--- ==================== NEW CUSTOM FEATURES (TPTOOL, KILLAURA, GODMODE, TUYCHINH, WALKFLING, AIMBOT, SWIM, ATTACH) ====================
+-- ==================== NEW CUSTOM FEATURES (TPTOOL, KILLAURA, GODMODE, WALKFLING, AIMBOT, ATTACH) ====================
 
 -- 1. Click Teleport Tool
 addCommand({"tptool"}, "Nhận công cụ click dịch chuyển (Click để di chuyển)", function()
@@ -1081,17 +1532,6 @@ addCommand({"ungod"}, "Tắt chế độ đẩy lùi quái vật", function()
     notify("God Mode", "Đã tắt đẩy lùi quái vật!", 3)
 end)
 
--- 4. Background Customization Command (tuychinh)
-addCommand({"tuychinh"}, "Thay đổi ảnh nền GUI bằng Asset ID (tuychinh ID)", function(args)
-    local assetId = tonumber(args[1])
-    if assetId then
-        BackgroundImage.Image = "rbxassetid://" .. assetId
-        notify("Tùy chỉnh", "Đã thay đổi ảnh nền!", 3)
-    else
-        notify("Lỗi", "Vui lòng nhập Asset ID hợp lệ!", 3)
-    end
-end)
-
 -- 5. Walkfling (Fling players while walking)
 local walkFlingActive = false
 addCommand({"walkfling"}, "Bật Walk Fling (Chạm là bay người chơi)", function()
@@ -1113,54 +1553,15 @@ addCommand({"walkfling"}, "Bật Walk Fling (Chạm là bay người chơi)", fu
 end)
 
 -- 6. Aimbot (Auto look at closest player's head)
-local aimbotActive = false
 addCommand({"aimbot"}, "Tự động khóa tâm vào đầu đối thủ gần nhất", function()
     aimbotActive = not aimbotActive
     notify("Aimbot", "Aimbot: " .. (aimbotActive and "BẬT" or "TẮT"), 3)
-    task.spawn(function()
-        while aimbotActive do
-            task.wait()
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local closest = nil
-                local maxDist = 300
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-                        local tHrp = p.Character:FindFirstChild("HumanoidRootPart")
-                        if tHrp then
-                            local dist = (tHrp.Position - hrp.Position).Magnitude
-                            if dist < maxDist then
-                                maxDist = dist
-                                closest = p.Character.Head
-                            end
-                        end
-                    end
-                end
-                if closest then
-                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, closest.Position)
-                end
-            end
-        end
-    end)
-end)
-
--- 7. Swim (Bơi tự do trên không)
-local swimActive = false
-addCommand({"swim"}, "Cho phép bơi tự do trên không trung", function()
-    swimActive = not swimActive
-    notify("Swim", "Swim: " .. (swimActive and "BẬT" or "TẮT"), 3)
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        task.spawn(function()
-            while swimActive do
-                RunService.Heartbeat:Wait()
-                pcall(function()
-                    hum:ChangeState(Enum.HumanoidStateType.Swimming)
-                end)
-            end
-        end)
+    if aimbotActive then
+        AimbotToggleBtn.Text = "BẬT AIMBOT: ON"
+        AimbotToggleBtn.TextColor3 = Color3.fromRGB(0, 200, 120)
+    else
+        AimbotToggleBtn.Text = "BẬT AIMBOT: OFF"
+        AimbotToggleBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
     end
 end)
 
@@ -1197,7 +1598,7 @@ addCommand({"unattach"}, "Tắt dính người chơi", function()
 end)
 
 
--- 29-100: Standardized batch processing supporting R6/R15
+-- Standardized batch processing supporting R6/R15
 local commandBatch = {
     {"sit", "Làm nhân vật ngồi xuống"},
     {"jump", "Bắt buộc nhân vật nhảy"},
@@ -1209,11 +1610,8 @@ local commandBatch = {
     {"freezecam", "Khóa cứng camera tại vị trí hiện tại"},
     {"unfreezecam", "Mở khóa camera bình thường"},
     {"fullbright", "Bật chế độ sáng màn hình hoàn toàn"},
-    {"nostarve", "Xóa hiệu ứng mệt mỏi trong một số map sinh tồn"},
     {"removesmoke", "Xóa khói mù"},
     {"antifall", "Ngăn không cho rơi tự do ngoài bản đồ"},
-    {"infenergy", "Năng lượng vô hạn (Tùy game)"},
-    {"infstamina", "Thể lực vô hạn (Tùy game)"},
     {"tpall", "Dịch chuyển toàn bộ người chơi tới mình (Fling/Troll)"},
     {"bring", "Kéo người chơi lại gần mình"},
     {"heal", "Hồi đầy máu (Nếu client-owned)"},
@@ -1275,7 +1673,7 @@ local commandBatch = {
     {"loadspy", "Mở công cụ bắt sóng Remote Event - SimpleSpy v2"}
 }
 
--- Batch Register Processing (Protected with individual pcall)
+-- Batch Register Processing
 for _, item in ipairs(commandBatch) do
     addCommand({item[1]}, item[2], function(args)
         local cmdName = item[1]
@@ -1381,7 +1779,7 @@ for _, item in ipairs(commandBatch) do
     end)
 end
 
--- ==================== CHATTED EVENT LISTENER (NO GUI INTERACTION REQUIRED) ====================
+-- ==================== CHATTED EVENT LISTENER ====================
 local function handleChatted(msg)
     local raw = msg:lower()
     if raw:sub(1, 9) == "/e fling " then
@@ -1409,7 +1807,6 @@ end
 LocalPlayer.Chatted:Connect(handleChatted)
 
 -- ==================== SORT AND POPULATE LIST VISUALLY ====================
--- Fixed indexing error where identical descriptions override or group incorrectly
 local sortedList = {}
 local trackerIndex = 1
 local descToId = {}
@@ -1453,7 +1850,6 @@ local function executeCommand(inputStr)
             InfoText.Text = "Lỗi lệnh: " .. tostring(err)
         end
     else
-        -- Search if user typed "help"
         if cmdName == "help" then
             InfoText.TextColor3 = Color3.fromRGB(255, 255, 255)
             InfoText.Text = "Danh sách lệnh đã hiển thị ở cuộn bên dưới."
@@ -1469,10 +1865,10 @@ ConsoleInput.FocusLost:Connect(function(enterPressed)
     if enterPressed then
         local text = ConsoleInput.Text
         executeCommand(text)
-        ConsoleInput.Text = "" -- Clear for next command
+        ConsoleInput.Text = ""
         SuggestionLabel.Text = ""
     end
 end)
 
--- Startup Announcement / Greeting (Custom notification)
+-- Startup Announcement / Greeting
 notify("Pure Admin Loaded!", "pure admin gui được tạo bởi nguyễn cát vũ💔🥀", 6)

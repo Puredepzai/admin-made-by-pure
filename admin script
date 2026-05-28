@@ -1872,3 +1872,209 @@ end)
 
 -- Startup Announcement / Greeting
 notify("Pure Admin Loaded!", "pure admin gui được tạo bởi nguyễn cát vũ💔🥀", 6)
+-- ==================== HỆ THỐNG ANIMATION ĐÓNG/MỞ CÀI ĐẶT PRO (MẶC ĐỊNH ẨN) ====================
+task.spawn(function()
+    -- Đợi giao diện gốc của ông load xong
+    task.wait(0.5)
+    
+    if MainFrame and LeftColumn and RightColumn then
+        -- 1. Cấu hình mặc định khi vừa chạy Script: ẨN CÀI ĐẶT, KHUNG LỆNH PHÌNH TO
+        local isSettingsVisible = false
+        local originalLeftSize = UDim2.new(0.5, -20, 1, -110) -- Kích thước gốc khi chia đôi
+        local originalLeftPos = UDim2.new(0, 15, 0, 55)      -- Vị trí gốc khi chia đôi
+        local originalRightSize = RightColumn.Size
+        
+        -- Ép trạng thái ban đầu là ẩn cài đặt luôn để bạn ông không bị rối
+        RightColumn.Visible = false
+        RightColumn.Size = UDim2.new(0, 0, originalRightSize.Y.Scale, originalRightSize.Y.Offset)
+        LeftColumn.Size = UDim2.new(1, -30, 1, -110) -- To toàn màn hình
+        LeftColumn.Position = UDim2.new(0, 15, 0, 55)
+
+        -- 2. Tạo nút bấm bánh răng tinh tế
+        local ToggleSettingsBtn = Instance.new("TextButton")
+        ToggleSettingsBtn.Name = "ToggleSettingsBtn"
+        ToggleSettingsBtn.Parent = MainFrame
+        ToggleSettingsBtn.Size = UDim2.new(0, 35, 0, 35)
+        ToggleSettingsBtn.Position = UDim2.new(1, -85, 0, 5) -- Nằm cạnh nút X
+        ToggleSettingsBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        ToggleSettingsBtn.TextColor3 = Color3.fromRGB(255, 255, 255) -- Mặc định màu trắng vì đang đóng
+        ToggleSettingsBtn.Text = "⚙️"
+        ToggleSettingsBtn.TextSize = 16
+        ToggleSettingsBtn.Font = Enum.Font.GothamBold
+        ToggleSettingsBtn.ZIndex = 3
+        
+        local BtnCorner = Instance.new("UICorner")
+        BtnCorner.CornerRadius = UDim.new(0, 8)
+        BtnCorner.Parent = ToggleSettingsBtn
+
+        -- 3. Xử lý Hiệu Ứng Animation mượt mà bằng TweenService
+        ToggleSettingsBtn.MouseButton1Click:Connect(function()
+            isSettingsVisible = not isSettingsVisible
+            
+            -- Cấu hình mượt mà (Thời gian 0.4 giây, hiệu ứng chuyển động Quart mềm mại)
+            local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+            
+            if isSettingsVisible then
+                -- HIỆU ỨNG MỞ CÀI ĐẶT (Bung rộng ra bên phải)
+                ToggleSettingsBtn.Text = "❌"
+                TweenService:Create(ToggleSettingsBtn, tweenInfo, {TextColor3 = Color3.fromRGB(255, 75, 75)}):Play()
+                
+                -- Thu nhỏ khung lệnh về bên trái trước, tạo không gian trống
+                TweenService:Create(LeftColumn, tweenInfo, {Size = originalLeftSize, Position = originalLeftPos}):Play()
+                
+                -- Đợi khung lệnh thu nhỏ một tí rồi cho khung cài đặt hiện ra mượt mà
+                task.wait(0.1)
+                RightColumn.Visible = true
+                TweenService:Create(RightColumn, tweenInfo, {Size = originalRightSize}):Play()
+            else
+                -- HIỆU ỨNG ĐÓNG CÀI ĐẶT (Thu nhỏ biến mất)
+                ToggleSettingsBtn.Text = "⚙️"
+                TweenService:Create(ToggleSettingsBtn, tweenInfo, {TextColor3 = Color3.fromRGB(0, 170, 255)}):Play()
+                
+                -- Thu nhỏ khung phải về 0
+                local targetRightSize = UDim2.new(0, 0, originalRightSize.Y.Scale, originalRightSize.Y.Offset)
+                local tweenRight = TweenService:Create(RightColumn, tweenInfo, {Size = targetRightSize})
+                tweenRight:Play()
+                
+                -- Chờ hiệu ứng thu nhỏ xong thì ẩn hẳn khung phải
+                tweenRight.Completed:Connect(function()
+                    if not isSettingsVisible then RightColumn.Visible = false end
+                end)
+                
+                -- Kéo dãn khung lệnh bên trái to ra chiếm trọn menu
+                TweenService:Create(LeftColumn, tweenInfo, {Size = UDim2.new(1, -30, 1, -110)}):Play()
+            end
+        end)
+    end
+end)
+-- ==================== LỆNH SUPER FIX LAG (POTATO MODE + FPS COUNTER) ====================
+addCommand({"fixlag", "superfixlag"}, "Chế độ khoai tây & hiện FPS", function()
+    -- 1. Bật bộ đếm FPS
+    local RunService = game:GetService("RunService")
+    local Stats = game:GetService("Stats")
+    
+    local FpsGui = Instance.new("ScreenGui")
+    FpsGui.Name = "FpsCounter"
+    FpsGui.Parent = game:GetService("CoreGui")
+    
+    local FpsLabel = Instance.new("TextLabel")
+    FpsLabel.Size = UDim2.new(0, 100, 0, 30)
+    FpsLabel.Position = UDim2.new(0, 10, 0, 50)
+    FpsLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    FpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    FpsLabel.Font = Enum.Font.Code
+    FpsLabel.TextSize = 20
+    FpsLabel.Parent = FpsGui
+
+    RunService.RenderStepped:Connect(function()
+        local fps = math.floor(1 / RunService.RenderStepped:Wait())
+        FpsLabel.Text = "FPS: " .. fps
+    end)
+
+    -- 2. Chế độ khoai tây (Potato Graphics)
+    notify("Fix Lag", "Đang chuyển sang chế độ Khoai Tây...", 2)
+    pcall(function()
+        -- Tắt mọi hiệu ứng ánh sáng
+        local Lighting = game:GetService("Lighting")
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        Lighting.Brightness = 0
+        
+        -- Chuyển toàn bộ vật thể sang dạng đơn giản
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Material = Enum.Material.Plastic
+                v.Reflectance = 0
+                if v:IsA("MeshPart") then
+                    v.TextureID = "" -- Xóa texture để giảm tải tối đa
+                end
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") then
+                v.Enabled = false
+            end
+        end
+        
+        -- Cấu hình Render thấp nhất
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    end)
+    notify("Fix Lag", "Đã bật chế độ Khoai Tây!", 3)
+end)
+-- ==================== LỆNH FREECAM (Tách biệt) ====================
+addCommand({"freecam", "fc"}, "Bật FreeCam với Joystick điều khiển", function()
+    if Camera.CameraType == Enum.CameraType.Scriptable then
+        Camera.CameraType = Enum.CameraType.Custom
+        local j = PureAdminGUI:FindFirstChild("FreeCamJoystick")
+        if j then j:Destroy() end
+        notify("FreeCam", "Đã tắt FreeCam", 2)
+        return
+    end
+
+    Camera.CameraType = Enum.CameraType.Scriptable
+    local camPos = Camera.CFrame.Position
+    local Joystick = Instance.new("Frame")
+    Joystick.Name = "FreeCamJoystick"
+    Joystick.Parent = PureAdminGUI
+    Joystick.Size = UDim2.new(0, 150, 0, 150)
+    Joystick.Position = UDim2.new(0.05, 0, 0.6, 0)
+    Joystick.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Joystick.BackgroundTransparency = 0.5
+    
+    local Circle = Instance.new("UICorner")
+    Circle.CornerRadius = UDim.new(1, 0)
+    Circle.Parent = Joystick
+
+    local moveVec = Vector3.new(0, 0, 0)
+    Joystick.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            local pos = input.Position
+            local center = Joystick.AbsolutePosition + Joystick.AbsoluteSize/2
+            local delta = (Vector2.new(pos.X, pos.Y) - center) / 75
+            moveVec = Vector3.new(delta.X, 0, delta.Y)
+        end
+    end)
+
+    RunService.RenderStepped:Connect(function()
+        if Camera.CameraType == Enum.CameraType.Scriptable then
+            camPos = camPos + (Camera.CFrame.LookVector * -moveVec.Z) + (Camera.CFrame.RightVector * moveVec.X)
+            Camera.CFrame = CFrame.new(camPos, camPos + Camera.CFrame.LookVector)
+        end
+    end)
+    notify("FreeCam", "Đã bật! Dùng Joystick bên trái để bay.", 3)
+end)
+
+-- ==================== LỆNH SUPER FIX LAG POTATO (Tách biệt) ====================
+addCommand({"fixlag", "superfixlag"}, "Chế độ khoai tây & hiện FPS", function()
+    -- Bộ đếm FPS
+    local FpsGui = Instance.new("ScreenGui")
+    FpsGui.Name = "FpsCounter"
+    FpsGui.Parent = game:GetService("CoreGui")
+    local FpsLabel = Instance.new("TextLabel")
+    FpsLabel.Size = UDim2.new(0, 100, 0, 30)
+    FpsLabel.Position = UDim2.new(0, 10, 0, 50)
+    FpsLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    FpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    FpsLabel.Font = Enum.Font.Code
+    FpsLabel.TextSize = 20
+    FpsLabel.Parent = FpsGui
+
+    RunService.RenderStepped:Connect(function()
+        local fps = math.floor(1 / RunService.RenderStepped:Wait())
+        FpsLabel.Text = "FPS: " .. fps
+    end)
+
+    -- Chế độ khoai tây
+    notify("Fix Lag", "Đang chuyển sang chế độ Khoai Tây...", 2)
+    pcall(function()
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Material = Enum.Material.Plastic
+                v.Reflectance = 0
+                if v:IsA("MeshPart") then v.TextureID = "" end
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") then
+                v.Enabled = false
+            end
+        end
+        game:GetService("Lighting").GlobalShadows = false
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    end)
+    notify("Fix Lag", "Đã bật chế độ Khoai Tây!", 3)
+end)

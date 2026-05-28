@@ -95,8 +95,8 @@ ToggleCorner.CornerRadius = UDim.new(0, 30)
 ToggleCorner.Parent = ToggleButton
 
 local ToggleStroke = Instance.new("UIStroke")
-ToggleStroke.Color = Color3.fromRGB(0, 170, 255)
-ToggleStroke.Thickness = 2
+ToggleStroke.Enabled = false
+ToggleStroke.Thickness = 0
 ToggleStroke.Parent = ToggleButton
 
 -- Main UI Frame (Resized to accommodate 2 panels side-by-side)
@@ -118,9 +118,9 @@ local BackgroundImage = Instance.new("ImageLabel")
 BackgroundImage.Name = "BackgroundImage"
 BackgroundImage.Parent = MainFrame
 BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
-BackgroundImage.BackgroundTransparency = 1
+BackgroundImage.BackgroundTransparency = 0.15
 BackgroundImage.Image = ""
-BackgroundImage.ScaleType = Enum.ScaleType.Stretch
+BackgroundImage.ScaleType = Enum.ScaleType.Crop
 BackgroundImage.ZIndex = 1
 
 local FileConfig = "PureAdmin_BgConfig.json"
@@ -147,9 +147,11 @@ local function applyBgImage(idStr)
         task.spawn(function()
             local rawId = getRawImageId(assetId) or assetId
             BackgroundImage.Image = "rbxassetid://" .. rawId
+            BackgroundImage.BackgroundTransparency = 0.1
         end)
     else
         BackgroundImage.Image = ""
+        BackgroundImage.BackgroundTransparency = 1
     end
 end
 
@@ -161,12 +163,13 @@ if isfile(FileConfig) then
 end
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.CornerRadius = UDim.new(0, 16)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(35, 35, 35)
-MainStroke.Thickness = 1
+MainStroke.Enabled = false
+MainStroke.Thickness = 0
+MainStroke.Transparency = 1
 MainStroke.Parent = MainFrame
 
 -- Top Bar / Title Bar
@@ -179,7 +182,7 @@ TopBar.BorderSizePixel = 0
 TopBar.ZIndex = 2
 
 local TopBarCorner = Instance.new("UICorner")
-TopBarCorner.CornerRadius = UDim.new(0, 12)
+TopBarCorner.CornerRadius = UDim.new(0, 16)
 TopBarCorner.Parent = TopBar
 
 local TopBarCover = Instance.new("Frame")
@@ -202,6 +205,7 @@ Title.BackgroundTransparency = 1
 Title.ZIndex = 3
 
 local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
 CloseButton.Parent = TopBar
 CloseButton.Size = UDim2.new(0, 35, 0, 35)
 CloseButton.Position = UDim2.new(1, -45, 0.5, -17.5)
@@ -252,21 +256,9 @@ InputCorner.CornerRadius = UDim.new(0, 8)
 InputCorner.Parent = InputContainer
 
 local InputStroke = Instance.new("UIStroke")
-InputStroke.Color = Color3.fromRGB(40, 40, 40)
-InputStroke.Thickness = 1
+InputStroke.Enabled = false
+InputStroke.Thickness = 0
 InputStroke.Parent = InputContainer
-
-local SuggestionLabel = Instance.new("TextLabel")
-SuggestionLabel.Parent = InputContainer
-SuggestionLabel.Size = UDim2.new(1, -20, 1, 0)
-SuggestionLabel.Position = UDim2.new(0, 10, 0, 0)
-SuggestionLabel.BackgroundTransparency = 1
-SuggestionLabel.Text = ""
-SuggestionLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-SuggestionLabel.Font = Enum.Font.Code
-SuggestionLabel.TextSize = 11
-SuggestionLabel.TextXAlignment = Enum.TextXAlignment.Left
-SuggestionLabel.ZIndex = 2
 
 local ConsoleInput = Instance.new("TextBox")
 ConsoleInput.Parent = InputContainer
@@ -282,10 +274,23 @@ ConsoleInput.TextXAlignment = Enum.TextXAlignment.Left
 ConsoleInput.ClearTextOnFocus = false
 ConsoleInput.ZIndex = 3
 
+-- Re-positioned SuggestionLabel below the InputContainer
+local SuggestionLabel = Instance.new("TextLabel")
+SuggestionLabel.Parent = LeftColumn
+SuggestionLabel.Size = UDim2.new(1, -10, 0, 20)
+SuggestionLabel.Position = UDim2.new(0, 5, 0, 68)
+SuggestionLabel.BackgroundTransparency = 1
+SuggestionLabel.Text = ""
+SuggestionLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+SuggestionLabel.Font = Enum.Font.Code
+SuggestionLabel.TextSize = 11
+SuggestionLabel.TextXAlignment = Enum.TextXAlignment.Left
+SuggestionLabel.ZIndex = 2
+
 local ScrollContainer = Instance.new("ScrollingFrame")
 ScrollContainer.Parent = LeftColumn
-ScrollContainer.Size = UDim2.new(1, 0, 1, -75)
-ScrollContainer.Position = UDim2.new(0, 0, 0, 75)
+ScrollContainer.Size = UDim2.new(1, 0, 1, -95)
+ScrollContainer.Position = UDim2.new(0, 0, 0, 95)
 ScrollContainer.BackgroundTransparency = 1
 ScrollContainer.ScrollBarThickness = 4
 ScrollContainer.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
@@ -356,8 +361,8 @@ local function createSettingContainer(parent, titleText, height)
     Corner.Parent = Frame
 
     local Stroke = Instance.new("UIStroke")
-    Stroke.Color = Color3.fromRGB(35, 35, 35)
-    Stroke.Thickness = 1
+    Stroke.Enabled = false
+    Stroke.Thickness = 0
     Stroke.Parent = Frame
 
     local Lbl = Instance.new("TextLabel")
@@ -374,6 +379,23 @@ local function createSettingContainer(parent, titleText, height)
 
     return Frame
 end
+
+-- ==================== HƯỚNG DẪN SỬ DỤNG GUI (NEW SECTION) ====================
+local GuideBlock = createSettingContainer(SettingsScroll, "HƯỚNG DẪN SỬ DỤNG GUI", 120)
+
+local GuideText = Instance.new("TextLabel")
+GuideText.Size = UDim2.new(0.94, 0, 0, 90)
+GuideText.Position = UDim2.new(0, 10, 0, 25)
+GuideText.BackgroundTransparency = 1
+GuideText.Text = "1. Nhấn nút tròn 'PA' để ẩn hoặc hiện bảng điều khiển.\n2. Nhập lệnh vào ô bên trái và ấn Enter để thực thi.\n3. Nhấn phím Tab để tự động điền nhanh các lệnh gợi ý.\n4. Click biểu tượng Bánh răng (⚙️) góc trên để bật/tắt Cài đặt."
+GuideText.TextColor3 = Color3.fromRGB(220, 220, 220)
+GuideText.Font = Enum.Font.Gotham
+GuideText.TextSize = 11
+GuideText.TextWrapped = true
+GuideText.TextYAlignment = Enum.TextYAlignment.Top
+GuideText.TextXAlignment = Enum.TextXAlignment.Left
+GuideText.ZIndex = 3
+GuideText.Parent = GuideBlock
 
 
 -- ==================== MOBILE JUMP BUTTON UNLOCK & INJECTOR ====================
@@ -402,8 +424,8 @@ local function toggleCustomJumpButton(state)
         Corner.Parent = customJumpBtn
 
         local Stroke = Instance.new("UIStroke")
-        Stroke.Color = Color3.fromRGB(0, 170, 255)
-        Stroke.Thickness = 2
+        Stroke.Enabled = false
+        Stroke.Thickness = 0
         Stroke.Parent = customJumpBtn
 
         customJumpBtn.MouseButton1Down:Connect(function()
@@ -493,11 +515,9 @@ end)
 
 -- ==================== SYSTEM COLOR THEME & INTERFACE OPTION ====================
 local function applyNewThemeColor(color)
-    ToggleStroke.Color = color
     ToggleButton.TextColor3 = color
     LeftTitle.TextColor3 = color
     RightTitle.TextColor3 = color
-    MainStroke.Color = color
     ScrollContainer.ScrollBarImageColor3 = color
     SettingsScroll.ScrollBarImageColor3 = color
     UnlockJumpBtn.BackgroundColor3 = color
@@ -528,6 +548,46 @@ ThemeInput.FocusLost:Connect(function()
     if r and g and b then
         local targetColor = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
         applyNewThemeColor(targetColor)
+    end
+end)
+
+
+-- ==================== GUI TEXT COLOR SYSTEM ====================
+local function applyNewTextColor(color)
+    for _, item in ipairs(PureAdminGUI:GetDescendants()) do
+        if item:IsA("TextLabel") or item:IsA("TextBox") or item:IsA("TextButton") then
+            if item.Name ~= "CloseButton" and item.Name ~= "ToggleButton" then
+                item.TextColor3 = color
+            end
+        end
+    end
+end
+
+local TextColorBlock = createSettingContainer(SettingsScroll, "TÙY CHỈNH MÀU CHỮ (TEXT COLOR)", 75)
+
+local TextColorInput = Instance.new("TextBox")
+TextColorInput.Size = UDim2.new(0.94, 0, 0, 30)
+TextColorInput.Position = UDim2.new(0, 10, 0, 30)
+TextColorInput.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+TextColorInput.PlaceholderText = "Nhập màu chữ RGB (ví dụ: 255,255,255)..."
+TextColorInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+TextColorInput.Text = "255,255,255"
+TextColorInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextColorInput.Font = Enum.Font.Gotham
+TextColorInput.TextSize = 11
+TextColorInput.ZIndex = 3
+TextColorInput.Parent = TextColorBlock
+
+local TextColorCorner = Instance.new("UICorner")
+TextColorCorner.CornerRadius = UDim.new(0, 6)
+TextColorCorner.Parent = TextColorInput
+
+TextColorInput.FocusLost:Connect(function()
+    local input = TextColorInput.Text
+    local r, g, b = input:match("(%d+),%s*(%d+),%s*(%d+)")
+    if r and g and b then
+        local targetColor = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
+        applyNewTextColor(targetColor)
     end
 end)
 
@@ -695,8 +755,8 @@ local function notify(title, text, duration)
         Corner.Parent = Notification
 
         local Stroke = Instance.new("UIStroke")
-        Stroke.Color = Color3.fromRGB(0, 170, 255)
-        Stroke.Thickness = 1.5
+        Stroke.Enabled = false
+        Stroke.Thickness = 0
         Stroke.Parent = Notification
 
         local TitleLbl = Instance.new("TextLabel")
@@ -907,6 +967,16 @@ local function stopFly()
     end)
 end
 
+-- Robust Mobile Velocity Setter
+local function setLinearVelocity(part, vel)
+    pcall(function()
+        part.AssemblyLinearVelocity = vel
+    end)
+    pcall(function()
+        part.Velocity = vel
+    end)
+end
+
 local function startFly()
     stopFly()
     
@@ -922,12 +992,12 @@ local function startFly()
     flyVelocity = Instance.new("BodyVelocity")
     flyVelocity.Name = "PureAdmin_FlyVelocity"
     flyVelocity.Velocity = Vector3.new(0, 0, 0)
-    flyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    flyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
     flyVelocity.Parent = hrp
     
     flyGyro = Instance.new("BodyGyro")
     flyGyro.Name = "PureAdmin_FlyGyro"
-    flyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+    flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
     flyGyro.CFrame = hrp.CFrame
     flyGyro.Parent = hrp
     
@@ -954,16 +1024,17 @@ local function startFly()
             end
             velocity = flyDir * flySpeed
         else
-            velocity = Vector3.new(0, 0.05, 0)
+            velocity = Vector3.new(0, 0, 0)
         end
         
         if flyBypassActive then
-            currentHrp.Velocity = Vector3.new(0, 0, 0)
+            setLinearVelocity(currentHrp, velocity)
             currentHrp.CFrame = currentHrp.CFrame + (velocity * 0.016)
             if flyVelocity then
-                flyVelocity.Velocity = Vector3.new(0, 0.05, 0)
+                flyVelocity.Velocity = velocity
             end
         else
+            setLinearVelocity(currentHrp, velocity)
             if flyVelocity then
                 flyVelocity.Velocity = velocity
             end
@@ -1159,7 +1230,7 @@ end)
 -- 11. Clip
 addCommand({"clip", "unnoclip"}, "Tắt đi xuyên tường", function()
     noclipActive = false
-    notify("Noclip", "Noclip đã được TẮT!", 3)
+    notify("Noclip", "Noclip đã được TẤT!", 3)
 end)
 
 -- 12. Infinite Jump
@@ -1179,7 +1250,7 @@ addCommand({"infjump", "ij"}, "Nhảy vô hạn trên không", function()
             end
         end)
     else
-        notify("Inf Jump", "Nhảy vô hạn đã TẮT!", 3)
+        notify("Inf Jump", "Nhảy vô hạn đã TẤT!", 3)
     end
 end)
 
@@ -1374,33 +1445,47 @@ addCommand({"untrollanim"}, "Tắt hoạt ảnh troll và đặt lại cơ thể
     notify("Troll Animation", "Đã phục hồi trạng thái cơ thể ban đầu!", 3)
 end)
 
--- 27. Invisible
-addCommand({"invisible", "invis"}, "Tàng hình nhân vật (Client-side)", function()
-    local char = LocalPlayer.Character
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") or part:IsA("Decal") then
-                part.Transparency = 1
-            end
-        end
-        notify("Invisible", "Nhân vật đã tàng hình!", 3)
-    end
-end)
 
--- 28. Uninvisible
-addCommand({"uninvisible", "uninvis"}, "Tắt tàng hình nhân vật", function()
+-- ==================== ĐỘN THỔ XUỐNG ĐẤT (REPLACED INVISIBLE) ====================
+local burrowActive = false
+local burrowConnection = nil
+local originalHipHeight = 0
+
+addCommand({"invisible", "invis", "dontho"}, "Độn thổ sâu xuống đất lướt đi tự do", function()
     local char = LocalPlayer.Character
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") or part:IsA("Decal") then
-                if part.Name ~= "HumanoidRootPart" then
-                    part.Transparency = 0
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum or burrowActive then return end
+    
+    burrowActive = true
+    originalHipHeight = hum.HipHeight
+    hum.HipHeight = -5.5
+    
+    burrowConnection = RunService.Stepped:Connect(function()
+        if LocalPlayer.Character then
+            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
                 end
             end
         end
-        notify("Invisible", "Nhân vật đã hiển thị trở lại!", 3)
-    end
+    end)
+    notify("Burrow System", "Đã độn thổ xuống mặt đất!", 3)
 end)
+
+addCommand({"uninvisible", "uninvis", "undontho"}, "Ngừng độn thổ và đi lên", function()
+    burrowActive = false
+    if burrowConnection then
+        burrowConnection:Disconnect()
+        burrowConnection = nil
+    end
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.HipHeight = originalHipHeight
+    end
+    notify("Burrow System", "Đã quay trở lại mặt đất bình thường!", 3)
+end)
+
 
 -- Dynamic Directional Fly Commands
 addCommand({"fly"}, "Bật chế độ bay tự do theo Camera (fly 100)", function(args)
@@ -1417,11 +1502,13 @@ end)
 
 addCommand({"flybypass"}, "Bật chế độ bay lách Anti-Cheat (Không bị kick)", function()
     flyBypassActive = true
+    startFly()
     notify("Fly Bypass", "Fly Bypass đã được BẬT!", 3)
 end)
 
 addCommand({"unflybypass", "noflybypass"}, "Tắt chế độ bay lách Anti-Cheat", function()
     flyBypassActive = false
+    stopFly()
     notify("Fly Bypass", "Fly Bypass đã được TẤT!", 3)
 end)
 
@@ -1563,7 +1650,134 @@ addCommand({"unattach"}, "Tắt dính người chơi", function()
 end)
 
 
--- Standardized batch processing supporting R6/R15
+-- ==================== NEW FEATURES: ANTIFLING, DANCE, HEADSIT ====================
+
+-- 1. Anti-Fling
+local antiFlingActive = false
+local antiFlingConnection = nil
+
+local function toggleAntiFling(state)
+    antiFlingActive = state
+    if antiFlingActive then
+        antiFlingConnection = RunService.Stepped:Connect(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            
+            -- Prevent self from building dangerous physics forces
+            for _, item in ipairs(char:GetDescendants()) do
+                if item:IsA("BasePart") then
+                    item.Velocity = Vector3.new(0,0,0)
+                    item.RotVelocity = Vector3.new(0,0,0)
+                end
+            end
+            
+            -- Disable physical collisions from foreign characters locally
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    for _, part in ipairs(player.Character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end
+        end)
+        notify("Anti-Fling", "Đã bật chế độ chống bị văng (Anti-Fling)!", 3)
+    else
+        if antiFlingConnection then
+            antiFlingConnection:Disconnect()
+            antiFlingConnection = nil
+        end
+        notify("Anti-Fling", "Đã tắt chống văng!", 3)
+    end
+end
+
+addCommand({"antifling", "noantiflingtoggle"}, "Kích hoạt bảo vệ chống văng (Anti-Fling)", function()
+    toggleAntiFling(true)
+end)
+
+addCommand({"unantifling", "noantifling"}, "Vô hiệu hóa chống văng", function()
+    toggleAntiFling(false)
+end)
+
+
+-- 2. Dance Loop (Procedural movement styling)
+local danceActive = false
+addCommand({"dance"}, "Nhảy múa nhịp điệu (Custom Procedural Dance)", function()
+    if danceActive then return end
+    danceActive = true
+    notify("Dance System", "Đang tự động nhảy múa cực cuốn!", 3)
+    task.spawn(function()
+        local t = 0
+        while danceActive do
+            RunService.RenderStepped:Wait()
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                t = t + 0.15
+                hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(6 * math.sin(t)), 0) * CFrame.new(0.15 * math.sin(t * 2), 0.05 * math.cos(t), 0)
+            end
+        end
+    end)
+end)
+
+addCommand({"undance", "nodance"}, "Ngừng nhảy múa và ổn định lại", function()
+    danceActive = false
+    notify("Dance System", "Đã dừng nhảy!", 3)
+end)
+
+
+-- 3. Headsit (Sit on other player's head)
+local headsitActive = false
+local headsitTarget = nil
+local headsitConnection = nil
+
+addCommand({"headsit"}, "Ngồi vào đầu người chơi khác (headsit name)", function(args)
+    local targets = getTargetPlayer(args[1])
+    if targets[1] and targets[1] ~= LocalPlayer then
+        headsitTarget = targets[1]
+        headsitActive = true
+        notify("Headsit System", "Đang ngồi lên đầu: " .. headsitTarget.DisplayName, 3)
+        
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Sitting = true end
+
+        if headsitConnection then headsitConnection:Disconnect() end
+        headsitConnection = RunService.Heartbeat:Connect(function()
+            local myChar = LocalPlayer.Character
+            local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            local tChar = headsitTarget.Character
+            local tHead = tChar and tChar:FindFirstChild("Head")
+            if myHrp and tHead then
+                myHrp.CFrame = tHead.CFrame * CFrame.new(0, 1.6, 0)
+                local myHum = myChar:FindFirstChildOfClass("Humanoid")
+                if myHum then myHum.Sitting = true end
+            else
+                headsitActive = false
+                if headsitConnection then headsitConnection:Disconnect() headsitConnection = nil end
+            end
+        end)
+    else
+        notify("Headsit System", "Không tìm thấy người chơi hợp lệ!", 3)
+    end
+end)
+
+addCommand({"unheadsit", "noheadsit"}, "Rời khỏi đầu người chơi đang ngồi", function()
+    headsitActive = false
+    if headsitConnection then
+        headsitConnection:Disconnect()
+        headsitConnection = nil
+    end
+    headsitTarget = nil
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.Sitting = false end
+    notify("Headsit System", "Đã rời đầu người chơi!", 3)
+end)
+
+
+-- Standardized batch processing supporting R6/R15 (R6/R15 command entries removed)
 local commandBatch = {
     {"sit", "Làm nhân vật ngồi xuống"},
     {"jump", "Bắt buộc nhân vật nhảy"},
@@ -1613,12 +1827,8 @@ local commandBatch = {
     {"esptracer", "Hiện đường vẽ kẻ nối người chơi"},
     {"void", "Tự quăng mình xuống hư vô"},
     {"flashbang", "Tạo hiệu ứng đèn nháy flash cực mạnh"},
-    {"darkmode", "Đổi giao diện sang tối tối đa"},
-    {"lightmode", "Đổi giao diện sang sáng sặc sỡ"},
     {"disablescripts", "Tắt tất cả local scripts chạy ngầm"},
     {"setcreeper", "Tạo tiếng Creeper nổ hài hước"},
-    {"r6", "Đổi kiểu khớp nối R6 giả lập"},
-    {"r15", "Đổi kiểu khớp nối R15 giả lập"},
     {"nude", "Lột đồ nhanh nhân vật"},
     {"reanimate", "Hồi sinh lại thân xác gốc"},
     {"setcoregui", "Bật tắt tính năng Core hệ thống"},
@@ -1633,7 +1843,7 @@ local commandBatch = {
     {"view", "Xem camera của người khác (view name)"},
     {"unview", "Quay lại camera của mình"},
     {"infyield", "Liên kết nhanh với Infinite Yield"},
-    {"loaddex", "Mở công cụ Explorer - Dex Explorer v4 Pro"},
+    {"loaddex", "Mở công cụ Explorer - Dex Explorer v4 Pro (Fixed)"},
     {"loadspy", "Mở công cụ bắt sóng Remote Event - SimpleSpy v2"}
 }
 
@@ -1723,7 +1933,8 @@ for _, item in ipairs(commandBatch) do
             elseif cmdName == "infyield" then
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
             elseif cmdName == "loaddex" then
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Games/main/Universal/DexExplorer.lua"))()
+                -- Secure stable Mobile Dex Explorer execution
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
             elseif cmdName == "loadspy" then
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua"))()
             else

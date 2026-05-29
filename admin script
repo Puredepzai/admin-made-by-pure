@@ -18,7 +18,7 @@ local HttpService = game:GetService("HttpService")
 -- Prevent infinite hanging on injection
 local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then
-  repeat task.wait() LocalPlayer = Players.LocalPlayer until LocalPlayer
+ repeat task.wait() LocalPlayer = Players.LocalPlayer until LocalPlayer
 end
 local Camera = workspace.CurrentCamera or workspace:FindFirstChildOfClass("Camera")
 
@@ -27,7 +27,13 @@ local function getSafeParent()
 local success, result = pcall(gethui)
 if success and result and typeof(result) == "Instance" then return result end
 
-success, result = pcall(function() return game:GetService("CoreGui") end)
+local testGui = Instance.new("ScreenGui")
+success, result = pcall(function() 
+    local cg = game:GetService("CoreGui")
+    testGui.Parent = cg
+    return cg
+end)
+pcall(function() testGui:Destroy() end)
 if success and result and typeof(result) == "Instance" then return result end
 
 local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 10)
@@ -55,28 +61,34 @@ local function safeDelFile(path)
 pcall(function() if delfile then delfile(path) end end)
 end
 
+local autoOpenFlag = false
+if safeIsFile("PureCommander_AutoOpen.txt") then
+    autoOpenFlag = true
+    safeDelFile("PureCommander_AutoOpen.txt")
+end
+
 -- Config Save & Load System
 local ConfigFile = "PureCommander_Settings.json"
 local currentSettings = {
- ThemeColor = "0,170,255",
- TextColor = "255,255,255",
- Opacity = "0.2"
+ThemeColor = "0,170,255",
+TextColor = "255,255,255",
+Opacity = "0.2"
 }
 
 local function loadConfig()
- if safeIsFile(ConfigFile) then
-     local data = safeReadFile(ConfigFile)
-     local success, decoded = pcall(function() return HttpService:JSONDecode(data) end)
-     if success and decoded then
-         for k, v in pairs(decoded) do
-             currentSettings[k] = v
-         end
-     end
- end
+if safeIsFile(ConfigFile) then
+    local data = safeReadFile(ConfigFile)
+    local success, decoded = pcall(function() return HttpService:JSONDecode(data) end)
+    if success and decoded then
+        for k, v in pairs(decoded) do
+            currentSettings[k] = v
+        end
+    end
+end
 end
 
 local function saveConfig()
- safeWriteFile(ConfigFile, HttpService:JSONEncode(currentSettings))
+safeWriteFile(ConfigFile, HttpService:JSONEncode(currentSettings))
 end
 
 loadConfig()
@@ -85,7 +97,7 @@ loadConfig()
 pcall(function()
 local existing = CoreGui:FindFirstChild("PureAdminGUI")
 if existing then
-    existing:Destroy()
+   existing:Destroy()
 end
 end)
 
@@ -138,33 +150,33 @@ local originalC0s = {}
 local function makeDraggable(gui)
 local dragging, dragInput, dragStart, startPos
 gui.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = gui.Position
-        
-        local connection
-        connection = input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-                if connection then
-                    connection:Disconnect()
-                    connection = nil
-                end
-            end
-        end)
-    end
+   if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+       dragging = true
+       dragStart = input.Position
+       startPos = gui.Position
+       
+       local connection
+       connection = input.Changed:Connect(function()
+           if input.UserInputState == Enum.UserInputState.End then
+               dragging = false
+               if connection then
+                   connection:Disconnect()
+                   connection = nil
+               end
+           end
+       end)
+   end
 end)
 gui.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+   if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+       dragInput = input
+   end
 end)
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
+   if input == dragInput and dragging then
+       local delta = input.Position - dragStart
+       gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+   end
 end)
 end
 
@@ -229,13 +241,13 @@ local function getRawImageId(assetId)
 local convertedAssetId = tonumber(assetId)
 if not convertedAssetId then return nil end
 local success, result = pcall(function()
-    local url = "https://assetdelivery.roblox.com/v1/asset/?id=" .. convertedAssetId
-    local content = game:HttpGet(url)
-    local imageId = content:match("<url>.-%?id=(%d+)</url>") or content:match("rbxassetid://(%d+)")
-    return tonumber(imageId)
+   local url = "https://assetdelivery.roblox.com/v1/asset/?id=" .. convertedAssetId
+   local content = game:HttpGet(url)
+   local imageId = content:match("<url>.-%?id=(%d+)</url>") or content:match("rbxassetid://(%d+)")
+   return tonumber(imageId)
 end)
 if success and result then
-    return result
+   return result
 end
 return convertedAssetId
 end
@@ -243,21 +255,21 @@ end
 local function applyBgImage(idStr)
 local assetId = tonumber(idStr)
 if assetId then
-    task.spawn(function()
-        local rawId = getRawImageId(assetId) or assetId
-        BackgroundImage.Image = "rbxassetid://" .. rawId
-        BackgroundImage.BackgroundTransparency = 0.1
-    end)
+   task.spawn(function()
+       local rawId = getRawImageId(assetId) or assetId
+       BackgroundImage.Image = "rbxassetid://" .. rawId
+       BackgroundImage.BackgroundTransparency = 0.1
+   end)
 else
-    BackgroundImage.Image = ""
-    BackgroundImage.BackgroundTransparency = 1
+   BackgroundImage.Image = ""
+   BackgroundImage.BackgroundTransparency = 1
 end
 end
 
 if safeIsFile(FileConfig) then
 local content = safeReadFile(FileConfig)
 if content and content ~= "" then
-    applyBgImage(content)
+   applyBgImage(content)
 end
 end
 
@@ -292,7 +304,7 @@ TopBarCover.Parent = TopBar
 
 local Title = Instance.new("TextLabel")
 Title.Parent = TopBar
-Title.Text = "PURE COMMANDER"
+Title.Text = "PURE COMMANDER [140+ CMDS]"
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 16
 Title.TextColor3 = Color3.fromRGB(240, 240, 240)
@@ -304,12 +316,12 @@ Title.ZIndex = 3
 
 -- Shimmering Sparkling RGB Title Effect
 task.spawn(function()
- while task.wait(0.05) do
-     local r = (math.sin(tick() * 2.5) + 1) / 2
-     local g = (math.sin(tick() * 2.5 + 2) + 1) / 2
-     local b = (math.sin(tick() * 2.5 + 4) + 1) / 2
-     Title.TextColor3 = Color3.new(r, g, b)
- end
+while task.wait(0.05) do
+    local r = (math.sin(tick() * 2.5) + 1) / 2
+    local g = (math.sin(tick() * 2.5 + 2) + 1) / 2
+    local b = (math.sin(tick() * 2.5 + 4) + 1) / 2
+    Title.TextColor3 = Color3.new(r, g, b)
+end
 end)
 
 local CloseButton = Instance.new("TextButton")
@@ -510,62 +522,62 @@ local customJumpBtn = nil
 
 local function toggleCustomJumpButton(state)
 if state then
-    if customJumpBtn then customJumpBtn.Visible = true return end
+   if customJumpBtn then customJumpBtn.Visible = true return end
 
-    customJumpBtn = Instance.new("TextButton")
-    customJumpBtn.Name = "PA_MobileJump"
-    customJumpBtn.Parent = PureAdminGUI
-    customJumpBtn.Size = UDim2.new(0, 65, 0, 65)
-    customJumpBtn.Position = UDim2.new(0.85, -20, 0.6, 0)
-    customJumpBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    customJumpBtn.BorderSizePixel = 0
-    customJumpBtn.Text = "JUMP"
-    customJumpBtn.Font = Enum.Font.GothamBold
-    customJumpBtn.TextSize = 14
-    customJumpBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-    customJumpBtn.ZIndex = 10
-    makeDraggable(customJumpBtn)
+   customJumpBtn = Instance.new("TextButton")
+   customJumpBtn.Name = "PA_MobileJump"
+   customJumpBtn.Parent = PureAdminGUI
+   customJumpBtn.Size = UDim2.new(0, 65, 0, 65)
+   customJumpBtn.Position = UDim2.new(0.85, -20, 0.6, 0)
+   customJumpBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+   customJumpBtn.BorderSizePixel = 0
+   customJumpBtn.Text = "JUMP"
+   customJumpBtn.Font = Enum.Font.GothamBold
+   customJumpBtn.TextSize = 14
+   customJumpBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
+   customJumpBtn.ZIndex = 10
+   makeDraggable(customJumpBtn)
 
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 32.5)
-    Corner.Parent = customJumpBtn
+   local Corner = Instance.new("UICorner")
+   Corner.CornerRadius = UDim.new(0, 32.5)
+   Corner.Parent = customJumpBtn
 
-    local Stroke = Instance.new("UIStroke")
-    Stroke.Thickness = 2
-    Stroke.Color = getgenv().ThemeColor
-    Stroke.Parent = customJumpBtn
+   local Stroke = Instance.new("UIStroke")
+   Stroke.Thickness = 2
+   Stroke.Color = getgenv().ThemeColor
+   Stroke.Parent = customJumpBtn
 
-    customJumpBtn.MouseButton1Down:Connect(function()
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.Jump = true
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
-    end)
+   customJumpBtn.MouseButton1Down:Connect(function()
+       local char = LocalPlayer.Character
+       local hum = char and char:FindFirstChildOfClass("Humanoid")
+       if hum then
+           hum.Jump = true
+           hum:ChangeState(Enum.HumanoidStateType.Jumping)
+       end
+   end)
 else
-    if customJumpBtn then
-        customJumpBtn.Visible = false
-    end
+   if customJumpBtn then
+       customJumpBtn.Visible = false
+   end
 end
 end
 
 local function unlockDefaultJump()
 pcall(function()
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.JumpHeight = 7.2
-        hum.JumpPower = 50
-        hum.UseJumpPower = true
-    end
-    local controls = LocalPlayer:FindFirstChild("PlayerScripts"):FindFirstChild("PlayerModule")
-    if controls then
-        local activeController = require(controls):GetControls()
-        if activeController then
-            activeController:Enable(true)
-        end
-    end
+   local char = LocalPlayer.Character
+   local hum = char and char:FindFirstChildOfClass("Humanoid")
+   if hum then
+       hum.JumpHeight = 7.2
+       hum.JumpPower = 50
+       hum.UseJumpPower = true
+   end
+   local controls = LocalPlayer:FindFirstChild("PlayerScripts"):FindFirstChild("PlayerModule")
+   if controls then
+       local activeController = require(controls):GetControls()
+       if activeController then
+           activeController:Enable(true)
+       end
+   end
 end)
 end
 
@@ -592,11 +604,11 @@ CustomJumpToggle.MouseButton1Click:Connect(function()
 customJumpActive = not customJumpActive
 toggleCustomJumpButton(customJumpActive)
 if customJumpActive then
-    CustomJumpToggle.Text = "HIỆN NÚT NHẢY MỚI: BẬT"
-    CustomJumpToggle.TextColor3 = Color3.fromRGB(0, 200, 120)
+   CustomJumpToggle.Text = "HIỆN NÚT NHẢY MỚI: BẬT"
+   CustomJumpToggle.TextColor3 = Color3.fromRGB(0, 200, 120)
 else
-    CustomJumpToggle.Text = "HIỆN NÚT NHẢY MỚI: TẮT"
-    CustomJumpToggle.TextColor3 = Color3.fromRGB(255, 75, 75)
+   CustomJumpToggle.Text = "HIỆN NÚT NHẢY MỚI: TẮT"
+   CustomJumpToggle.TextColor3 = Color3.fromRGB(255, 75, 75)
 end
 end)
 
@@ -644,35 +656,35 @@ local shortestDistance = math.huge
 local mousePos = UserInputService:GetMouseLocation()
 
 for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer and player.Character then
-        local head = player.Character:FindFirstChild("Head")
-        local hum = player.Character:FindFirstChildOfClass("Humanoid")
-        if head and hum and hum.Health > 0 then
-            local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-            if onScreen then
-                local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                if distance < shortestDistance and distance < aimbotFOV then
-                    shortestDistance = distance
-                    closestPlayer = player
-                end
-            end
-        end
-    end
+   if player ~= LocalPlayer and player.Character then
+       local head = player.Character:FindFirstChild("Head")
+       local hum = player.Character:FindFirstChildOfClass("Humanoid")
+       if head and hum and hum.Health > 0 then
+           local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+           if onScreen then
+               local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+               if distance < shortestDistance and distance < aimbotFOV then
+                   shortestDistance = distance
+                   closestPlayer = player
+               end
+           end
+       end
+   end
 end
 return closestPlayer
 end
 
 RunService.RenderStepped:Connect(function()
 if aimbotEnabled then
-    local target = getClosestPlayerToCursor()
-    if target and target.Character then
-        local head = target.Character:FindFirstChild("Head")
-        if head then
-            pcall(function()
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
-            end)
-        end
-    end
+   local target = getClosestPlayerToCursor()
+   if target and target.Character then
+       local head = target.Character:FindFirstChild("Head")
+       if head then
+           pcall(function()
+               Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+           end)
+       end
+   end
 end
 end)
 
@@ -697,15 +709,15 @@ ToggleStroke.Color = color
 InputStroke.Color = color
 
 for _, child in ipairs(SettingsScroll:GetChildren()) do
-    if child:IsA("Frame") then
-        local s = child:FindFirstChildOfClass("UIStroke")
-        if s then s.Color = color end
-    end
+   if child:IsA("Frame") then
+       local s = child:FindFirstChildOfClass("UIStroke")
+       if s then s.Color = color end
+   end
 end
 
 if not blockSave then
-    currentSettings.ThemeColor = string.format("%d,%d,%d", math.floor(color.R * 255), math.floor(color.G * 255), math.floor(color.B * 255))
-    saveConfig()
+   currentSettings.ThemeColor = string.format("%d,%d,%d", math.floor(color.R * 255), math.floor(color.G * 255), math.floor(color.B * 255))
+   saveConfig()
 end
 end
 
@@ -732,8 +744,8 @@ ThemeInput.FocusLost:Connect(function()
 local input = ThemeInput.Text
 local r, g, b = input:match("(%d+),%s*(%d+),%s*(%d+)")
 if r and g and b then
-    local targetColor = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
-    applyNewThemeColor(targetColor)
+   local targetColor = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
+   applyNewThemeColor(targetColor)
 end
 end)
 
@@ -741,16 +753,16 @@ end)
 -- ==================== GUI TEXT COLOR SYSTEM ====================
 local function applyNewTextColor(color, blockSave)
 for _, item in ipairs(PureAdminGUI:GetDescendants()) do
-    if item:IsA("TextLabel") or item:IsA("TextBox") or item:IsA("TextButton") then
-        if item.Name ~= "CloseButton" and item.Name ~= "ToggleButton" then
-            item.TextColor3 = color
-        end
-    end
+   if item:IsA("TextLabel") or item:IsA("TextBox") or item:IsA("TextButton") then
+       if item.Name ~= "CloseButton" and item.Name ~= "ToggleButton" then
+           item.TextColor3 = color
+       end
+   end
 end
 
 if not blockSave then
-    currentSettings.TextColor = string.format("%d,%d,%d", math.floor(color.R * 255), math.floor(color.G * 255), math.floor(color.B * 255))
-    saveConfig()
+   currentSettings.TextColor = string.format("%d,%d,%d", math.floor(color.R * 255), math.floor(color.G * 255), math.floor(color.B * 255))
+   saveConfig()
 end
 end
 
@@ -777,8 +789,8 @@ TextColorInput.FocusLost:Connect(function()
 local input = TextColorInput.Text
 local r, g, b = input:match("(%d+),%s*(%d+),%s*(%d+)")
 if r and g and b then
-    local targetColor = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
-    applyNewTextColor(targetColor)
+   local targetColor = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
+   applyNewTextColor(targetColor)
 end
 end)
 
@@ -836,39 +848,39 @@ text = text:gsub("%s+", "")
 local assetId = tonumber(text)
 
 if assetId then
-    BgStatusLabel.Text = "Đang kiểm tra và tải ảnh nền..."
-    BgStatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+   BgStatusLabel.Text = "Đang kiểm tra và tải ảnh nền..."
+   BgStatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
 
-    task.spawn(function()
-        local success, assetInfo = pcall(function()
-            return MarketplaceService:GetProductInfo(assetId)
-        end)
+   task.spawn(function()
+       local success, assetInfo = pcall(function()
+           return MarketplaceService:GetProductInfo(assetId)
+       end)
 
-        local actualImageId = getRawImageId(assetId) or assetId
+       local actualImageId = getRawImageId(assetId) or assetId
 
-        if success and assetInfo then
-            BackgroundImage.Image = "rbxassetid://" .. actualImageId
-            safeWriteFile(FileConfig, tostring(assetId))
-            BgStatusLabel.Text = "ảnh nền đã được đặt"
-            BgStatusLabel.TextColor3 = Color3.fromRGB(0, 220, 120)
-        else
-            if actualImageId then
-                BackgroundImage.Image = "rbxassetid://" .. actualImageId
-                safeWriteFile(FileConfig, tostring(assetId))
-                BgStatusLabel.Text = "ảnh nền đã được đặt"
-                BgStatusLabel.TextColor3 = Color3.fromRGB(0, 220, 120)
-            else
-                BackgroundImage.Image = ""
-                BgStatusLabel.Text = "sai id"
-                BgStatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
-            end
-        end
-    end)
+       if success and assetInfo then
+           BackgroundImage.Image = "rbxassetid://" .. actualImageId
+           safeWriteFile(FileConfig, tostring(assetId))
+           BgStatusLabel.Text = "ảnh nền đã được đặt"
+           BgStatusLabel.TextColor3 = Color3.fromRGB(0, 220, 120)
+       else
+           if actualImageId then
+               BackgroundImage.Image = "rbxassetid://" .. actualImageId
+               safeWriteFile(FileConfig, tostring(assetId))
+               BgStatusLabel.Text = "ảnh nền đã được đặt"
+               BgStatusLabel.TextColor3 = Color3.fromRGB(0, 220, 120)
+           else
+               BackgroundImage.Image = ""
+               BgStatusLabel.Text = "sai id"
+               BgStatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
+           end
+       end
+   end)
 else
-    BackgroundImage.Image = ""
-    safeDelFile(FileConfig)
-    BgStatusLabel.Text = "sai id"
-    BgStatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
+   BackgroundImage.Image = ""
+   safeDelFile(FileConfig)
+   BgStatusLabel.Text = "sai id"
+   BgStatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
 end
 end
 
@@ -878,7 +890,7 @@ end)
 
 BgImageInput.FocusLost:Connect(function(enterPressed)
 if enterPressed then
-    verifyAndApplyBg(BgImageInput.Text)
+   verifyAndApplyBg(BgImageInput.Text)
 end
 end)
 
@@ -906,11 +918,11 @@ ToggleUIBtn.MouseButton1Click:Connect(function()
 showFloatingButton = not showFloatingButton
 ToggleButton.Visible = showFloatingButton
 if showFloatingButton then
-    ToggleUIBtn.Text = "ẨN NÚT TRÒN (TOGGLE BUTTON): HIỆN"
-    ToggleUIBtn.TextColor3 = Color3.fromRGB(0, 200, 120)
+   ToggleUIBtn.Text = "ẨN NÚT TRÒN (TOGGLE BUTTON): HIỆN"
+   ToggleUIBtn.TextColor3 = Color3.fromRGB(0, 200, 120)
 else
-    ToggleUIBtn.Text = "ẨN NÚT TRÒN (TOGGLE BUTTON): ẨN"
-    ToggleUIBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
+   ToggleUIBtn.Text = "ẨN NÚT TRÒN (TOGGLE BUTTON): ẨN"
+   ToggleUIBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
 end
 end)
 
@@ -936,11 +948,11 @@ local function setAimbotState(state)
 aimbotEnabled = state
 FOVCircle.Visible = aimbotEnabled
 if aimbotEnabled then
-    AimbotToggle.Text = "AIMBOT: BẬT"
-    AimbotToggle.TextColor3 = Color3.fromRGB(0, 200, 120)
+   AimbotToggle.Text = "AIMBOT: BẬT"
+   AimbotToggle.TextColor3 = Color3.fromRGB(0, 200, 120)
 else
-    AimbotToggle.Text = "AIMBOT: TẮT"
-    AimbotToggle.TextColor3 = Color3.fromRGB(255, 75, 75)
+   AimbotToggle.Text = "AIMBOT: TẮT"
+   AimbotToggle.TextColor3 = Color3.fromRGB(255, 75, 75)
 end
 end
 
@@ -968,8 +980,8 @@ AimbotSizeCorner.Parent = AimbotSizeInput
 AimbotSizeInput.FocusLost:Connect(function()
 local val = tonumber(AimbotSizeInput.Text)
 if val then
-    aimbotFOV = val
-    FOVCircle.Size = UDim2.new(0, aimbotFOV * 2, 0, aimbotFOV * 2)
+   aimbotFOV = val
+   FOVCircle.Size = UDim2.new(0, aimbotFOV * 2, 0, aimbotFOV * 2)
 end
 end)
 
@@ -977,34 +989,34 @@ end)
 local function toggleRTX(state)
 rtxEnabled = state
 if rtxEnabled then
-    Lighting.Brightness = 2.5
-    Lighting.GlobalShadows = true
-    Lighting.ShadowSoftness = 0.2
-    Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 130)
-    Lighting.Ambient = Color3.fromRGB(40, 40, 40)
+   Lighting.Brightness = 2.5
+   Lighting.GlobalShadows = true
+   Lighting.ShadowSoftness = 0.2
+   Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 130)
+   Lighting.Ambient = Color3.fromRGB(40, 40, 40)
 
-    local bloom = Lighting:FindFirstChild("PureRTX_Bloom") or Instance.new("BloomEffect", Lighting)
-    bloom.Name = "PureRTX_Bloom"
-    bloom.Intensity = 1
-    bloom.Size = 24
-    bloom.Threshold = 0.9
+   local bloom = Lighting:FindFirstChild("PureRTX_Bloom") or Instance.new("BloomEffect", Lighting)
+   bloom.Name = "PureRTX_Bloom"
+   bloom.Intensity = 1
+   bloom.Size = 24
+   bloom.Threshold = 0.9
 
-    local colorCorrection = Lighting:FindFirstChild("PureRTX_ColorCorr") or Instance.new("ColorCorrectionEffect", Lighting)
-    colorCorrection.Name = "PureRTX_ColorCorr"
-    colorCorrection.Contrast = 0.15
-    colorCorrection.Saturation = 0.2
-    colorCorrection.TintColor = Color3.fromRGB(255, 245, 235)
+   local colorCorrection = Lighting:FindFirstChild("PureRTX_ColorCorr") or Instance.new("ColorCorrectionEffect", Lighting)
+   colorCorrection.Name = "PureRTX_ColorCorr"
+   colorCorrection.Contrast = 0.15
+   colorCorrection.Saturation = 0.2
+   colorCorrection.TintColor = Color3.fromRGB(255, 245, 235)
 
-    local sunRays = Lighting:FindFirstChild("PureRTX_SunRays") or Instance.new("SunRaysEffect", Lighting)
-    sunRays.Name = "PureRTX_SunRays"
-    sunRays.Intensity = 0.1
-    sunRays.Spread = 0.8
+   local sunRays = Lighting:FindFirstChild("PureRTX_SunRays") or Instance.new("SunRaysEffect", Lighting)
+   sunRays.Name = "PureRTX_SunRays"
+   sunRays.Intensity = 0.1
+   sunRays.Spread = 0.8
 else
-    pcall(function()
-        if Lighting:FindFirstChild("PureRTX_Bloom") then Lighting.PureRTX_Bloom:Destroy() end
-        if Lighting:FindFirstChild("PureRTX_ColorCorr") then Lighting.PureRTX_ColorCorr:Destroy() end
-        if Lighting:FindFirstChild("PureRTX_SunRays") then Lighting.PureRTX_SunRays:Destroy() end
-    end)
+   pcall(function()
+       if Lighting:FindFirstChild("PureRTX_Bloom") then Lighting.PureRTX_Bloom:Destroy() end
+       if Lighting:FindFirstChild("PureRTX_ColorCorr") then Lighting.PureRTX_ColorCorr:Destroy() end
+       if Lighting:FindFirstChild("PureRTX_SunRays") then Lighting.PureRTX_SunRays:Destroy() end
+   end)
 end
 end
 
@@ -1029,11 +1041,11 @@ RTXToggle.MouseButton1Click:Connect(function()
 rtxEnabled = not rtxEnabled
 toggleRTX(rtxEnabled)
 if rtxEnabled then
-    RTXToggle.Text = "RTX GRAPHICS: BẬT"
-    RTXToggle.TextColor3 = Color3.fromRGB(0, 200, 120)
+   RTXToggle.Text = "RTX GRAPHICS: BẬT"
+   RTXToggle.TextColor3 = Color3.fromRGB(0, 200, 120)
 else
-    RTXToggle.Text = "RTX GRAPHICS: TẮT"
-    RTXToggle.TextColor3 = Color3.fromRGB(255, 75, 75)
+   RTXToggle.Text = "RTX GRAPHICS: TẮT"
+   RTXToggle.TextColor3 = Color3.fromRGB(255, 75, 75)
 end
 end)
 
@@ -1067,8 +1079,8 @@ end
 OpacityInput.FocusLost:Connect(function()
 local val = tonumber(OpacityInput.Text)
 if val then
-    val = math.clamp(val, 0, 1)
-    applyOpacity(val)
+   val = math.clamp(val, 0, 1)
+   applyOpacity(val)
 end
 end)
 
@@ -1090,74 +1102,74 @@ InfoText.ZIndex = 2
 -- Dynamic Custom Notifications
 local function notify(title, text, duration)
 task.spawn(function()
-    local Notification = Instance.new("Frame")
-    Notification.Parent = PureAdminGUI
-    Notification.Size = UDim2.new(0, 250, 0, 70)
-    Notification.Position = UDim2.new(1, 10, 0.8, 0)
-    Notification.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    Notification.BorderSizePixel = 0
+   local Notification = Instance.new("Frame")
+   Notification.Parent = PureAdminGUI
+   Notification.Size = UDim2.new(0, 250, 0, 70)
+   Notification.Position = UDim2.new(1, 10, 0.8, 0)
+   Notification.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+   Notification.BorderSizePixel = 0
 
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
-    Corner.Parent = Notification
+   local Corner = Instance.new("UICorner")
+   Corner.CornerRadius = UDim.new(0, 8)
+   Corner.Parent = Notification
 
-    local Stroke = Instance.new("UIStroke")
-    Stroke.Thickness = 1.5
-    Stroke.Color = getgenv().ThemeColor
-    Stroke.Parent = Notification
+   local Stroke = Instance.new("UIStroke")
+   Stroke.Thickness = 1.5
+   Stroke.Color = getgenv().ThemeColor
+   Stroke.Parent = Notification
 
-    local TitleLbl = Instance.new("TextLabel")
-    TitleLbl.Parent = Notification
-    TitleLbl.Size = UDim2.new(1, -20, 0, 25)
-    TitleLbl.Position = UDim2.new(0, 10, 0, 5)
-    TitleLbl.BackgroundTransparency = 1
-    TitleLbl.Text = title
-    TitleLbl.Font = Enum.Font.GothamBold
-    TitleLbl.TextSize = 14
-    TitleLbl.TextColor3 = getgenv().ThemeColor
-    TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+   local TitleLbl = Instance.new("TextLabel")
+   TitleLbl.Parent = Notification
+   TitleLbl.Size = UDim2.new(1, -20, 0, 25)
+   TitleLbl.Position = UDim2.new(0, 10, 0, 5)
+   TitleLbl.BackgroundTransparency = 1
+   TitleLbl.Text = title
+   TitleLbl.Font = Enum.Font.GothamBold
+   TitleLbl.TextSize = 14
+   TitleLbl.TextColor3 = getgenv().ThemeColor
+   TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local TextLbl = Instance.new("TextLabel")
-    TextLbl.Parent = Notification
-    TextLbl.Size = UDim2.new(1, -20, 0, 30)
-    TextLbl.Position = UDim2.new(0, 10, 0, 30)
-    TextLbl.BackgroundTransparency = 1
-    TextLbl.Text = text
-    TextLbl.Font = Enum.Font.Gotham
-    TextLbl.TextSize = 12
-    TextLbl.TextColor3 = Color3.fromRGB(240, 240, 240)
-    TextLbl.TextWrapped = true
-    TextLbl.TextXAlignment = Enum.TextXAlignment.Left
+   local TextLbl = Instance.new("TextLabel")
+   TextLbl.Parent = Notification
+   TextLbl.Size = UDim2.new(1, -20, 0, 30)
+   TextLbl.Position = UDim2.new(0, 10, 0, 30)
+   TextLbl.BackgroundTransparency = 1
+   TextLbl.Text = text
+   TextLbl.Font = Enum.Font.Gotham
+   TextLbl.TextSize = 12
+   TextLbl.TextColor3 = Color3.fromRGB(240, 240, 240)
+   TextLbl.TextWrapped = true
+   TextLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    TweenService:Create(Notification, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Position = UDim2.new(1, -265, 0.8, 0)
-    }):Play()
+   TweenService:Create(Notification, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+       Position = UDim2.new(1, -265, 0.8, 0)
+   }):Play()
 
-    task.wait(duration or 3)
+   task.wait(duration or 3)
 
-    TweenService:Create(Notification, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-        Position = UDim2.new(1, 10, 0.8, 0)
-    }):Play()
-    task.wait(0.5)
-    Notification:Destroy()
+   TweenService:Create(Notification, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+       Position = UDim2.new(1, 10, 0.8, 0)
+   }):Play()
+   task.wait(0.5)
+   Notification:Destroy()
 end)
 end
 
 -- Open/Close Logic
 local function toggleUI()
 if isOpened then
-    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0)
-    }):Play()
-    task.wait(0.4)
-    MainFrame.Visible = false
+   TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+       Size = UDim2.new(0, 0, 0, 0),
+       Position = UDim2.new(0.5, 0, 0.5, 0)
+   }):Play()
+   task.wait(0.4)
+   MainFrame.Visible = false
 else
-    MainFrame.Visible = true
-    TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 680, 0, 380),
-        Position = UDim2.new(0.5, -340, 0.5, -190)
-    }):Play()
+   MainFrame.Visible = true
+   TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+       Size = UDim2.new(0, 680, 0, 380),
+       Position = UDim2.new(0.5, -340, 0.5, -190)
+   }):Play()
 end
 isOpened = not isOpened
 end
@@ -1181,10 +1193,10 @@ local commands = {}
 
 local function addCommand(names, desc, handler)
 for _, name in ipairs(names) do
-    commands[name:lower()] = {
-        desc = desc,
-        handler = handler
-    }
+   commands[name:lower()] = {
+       desc = desc,
+       handler = handler
+   }
 end
 end
 
@@ -1225,19 +1237,19 @@ local function getTargetPlayer(text)
 if not text or text == "" then return {LocalPlayer} end
 if text:lower() == "all" then return Players:GetPlayers() end
 if text:lower() == "others" then
-    local others = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then table.insert(others, p) end
-    end
-    return others
+   local others = {}
+   for _, p in ipairs(Players:GetPlayers()) do
+       if p ~= LocalPlayer then table.insert(others, p) end
+   end
+   return others
 end
 if text:lower() == "me" then return {LocalPlayer} end
 
 local matches = {}
 for _, p in ipairs(Players:GetPlayers()) do
-    if p.Name:lower():sub(1, #text) == text:lower() or p.DisplayName:lower():sub(1, #text) == text:lower() then
-        table.insert(matches, p)
-    end
+   if p.Name:lower():sub(1, #text) == text:lower() or p.DisplayName:lower():sub(1, #text) == text:lower() then
+       table.insert(matches, p)
+   end
 end
 return matches
 end
@@ -1247,9 +1259,9 @@ local currentFirstMatch = nil
 ConsoleInput:GetPropertyChangedSignal("Text"):Connect(function()
 local text = ConsoleInput.Text
 if text == "" then
-    SuggestionLabel.Text = ""
-    currentFirstMatch = nil
-    return
+   SuggestionLabel.Text = ""
+   currentFirstMatch = nil
+   return
 end
 
 local args = text:split(" ")
@@ -1257,38 +1269,38 @@ local inputCmd = args[1]:lower()
 
 local matches = {}
 for name, _ in pairs(commands) do
-    if name:sub(1, #inputCmd) == inputCmd then
-        table.insert(matches, name)
-    end
+   if name:sub(1, #inputCmd) == inputCmd then
+       table.insert(matches, name)
+   end
 end
 
 if #matches > 0 then
-    table.sort(matches)
-    currentFirstMatch = matches[1]
+   table.sort(matches)
+   currentFirstMatch = matches[1]
 
-    local displayMatches = {}
-    for i = 1, math.min(#matches, 6) do
-        table.insert(displayMatches, matches[i])
-    end
-    local matchStr = table.concat(displayMatches, ", ")
-    if #matches > 6 then
-        matchStr = matchStr .. "..."
-    end
+   local displayMatches = {}
+   for i = 1, math.min(#matches, 6) do
+       table.insert(displayMatches, matches[i])
+   end
+   local matchStr = table.concat(displayMatches, ", ")
+   if #matches > 6 then
+       matchStr = matchStr .. "..."
+   end
 
-    SuggestionLabel.Text = "Gợi ý: " .. matchStr
+   SuggestionLabel.Text = "Gợi ý: " .. matchStr
 else
-    SuggestionLabel.Text = ""
-    currentFirstMatch = nil
+   SuggestionLabel.Text = ""
+   currentFirstMatch = nil
 end
 end)
 
 -- Auto Fill Suggestion with Tab / Custom Key
 UserInputService.InputBegan:Connect(function(input, processed)
 if ConsoleInput:IsFocused() and input.KeyCode == Enum.KeyCode.Tab then
-    if currentFirstMatch then
-        ConsoleInput.Text = currentFirstMatch
-        ConsoleInput.CursorPosition = #ConsoleInput.Text + 1
-    end
+   if currentFirstMatch then
+       ConsoleInput.Text = currentFirstMatch
+       ConsoleInput.CursorPosition = #ConsoleInput.Text + 1
+   end
 end
 end)
 
@@ -1300,26 +1312,26 @@ local flyGyro = nil
 local function stopFly()
 flyActive = false
 if flyConnection then
-    flyConnection:Disconnect()
-    flyConnection = nil
+   flyConnection:Disconnect()
+   flyConnection = nil
 end
 pcall(function()
-    if flyVelocity then flyVelocity:Destroy() flyVelocity = nil end
-    if flyGyro then flyGyro:Destroy() flyGyro = nil end
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.PlatformStand = false
-    end
+   if flyVelocity then flyVelocity:Destroy() flyVelocity = nil end
+   if flyGyro then flyGyro:Destroy() flyGyro = nil end
+   local char = LocalPlayer.Character
+   local hum = char and char:FindFirstChildOfClass("Humanoid")
+   if hum then
+       hum.PlatformStand = false
+   end
 end)
 end
 
 local function setLinearVelocity(part, vel)
 pcall(function()
-    part.AssemblyLinearVelocity = vel
+   part.AssemblyLinearVelocity = vel
 end)
 pcall(function()
-    part.Velocity = vel
+   part.Velocity = vel
 end)
 end
 
@@ -1348,54 +1360,54 @@ flyGyro.CFrame = hrp.CFrame
 flyGyro.Parent = hrp
 
 flyConnection = RunService.Heartbeat:Connect(function()
-    local currentCharacter = LocalPlayer.Character
-    if not currentCharacter or not currentCharacter.Parent then
-        stopFly()
-        return
-    end
-    local currentHrp = currentCharacter:FindFirstChild("HumanoidRootPart")
-    local currentHum = currentCharacter:FindFirstChildOfClass("Humanoid")
-    if not currentHrp or not currentHum then return end
+   local currentCharacter = LocalPlayer.Character
+   if not currentCharacter or not currentCharacter.Parent then
+       stopFly()
+       return
+   end
+   local currentHrp = currentCharacter:FindFirstChild("HumanoidRootPart")
+   local currentHum = currentCharacter:FindFirstChildOfClass("Humanoid")
+   if not currentHrp or not currentHum then return end
 
-    currentHum.PlatformStand = true
-    local moveDirection = currentHum.MoveDirection
-    local camCFrame = Camera.CFrame
-    local velocity = Vector3.new(0, 0, 0)
+   currentHum.PlatformStand = true
+   local moveDirection = currentHum.MoveDirection
+   local camCFrame = Camera.CFrame
+   local velocity = Vector3.new(0, 0, 0)
 
-    if moveDirection.Magnitude > 0 then
-        local localMove = camCFrame:VectorToObjectSpace(moveDirection)
-        local flyDir = (camCFrame.LookVector * -localMove.Z) + (camCFrame.RightVector * localMove.X)
-        if flyDir.Magnitude > 0 then
-            flyDir = flyDir.Unit
-        end
-        velocity = flyDir * flySpeed
-    else
-        velocity = Vector3.new(0, 0, 0)
-    end
+   if moveDirection.Magnitude > 0 then
+       local localMove = camCFrame:VectorToObjectSpace(moveDirection)
+       local flyDir = (camCFrame.LookVector * -localMove.Z) + (camCFrame.RightVector * localMove.X)
+       if flyDir.Magnitude > 0 then
+           flyDir = flyDir.Unit
+       end
+       velocity = flyDir * flySpeed
+   else
+       velocity = Vector3.new(0, 0, 0)
+   end
 
-    if flyBypassActive then
-        setLinearVelocity(currentHrp, velocity)
-        currentHrp.CFrame = currentHrp.CFrame + (velocity * 0.016)
-        if flyVelocity then
-            flyVelocity.Velocity = velocity
-        end
-    else
-        setLinearVelocity(currentHrp, velocity)
-        if flyVelocity then
-            flyVelocity.Velocity = velocity
-        end
-    end
+   if flyBypassActive then
+       setLinearVelocity(currentHrp, velocity)
+       currentHrp.CFrame = currentHrp.CFrame + (velocity * 0.016)
+       if flyVelocity then
+           flyVelocity.Velocity = velocity
+       end
+   else
+       setLinearVelocity(currentHrp, velocity)
+       if flyVelocity then
+           flyVelocity.Velocity = velocity
+       end
+   end
 
-    if flyGyro then
-        flyGyro.CFrame = camCFrame
-    end
+   if flyGyro then
+       flyGyro.CFrame = camCFrame
+   end
 end)
 end
 
 LocalPlayer.CharacterAdded:Connect(function()
 if flyActive then
-    task.wait(0.5)
-    startFly()
+   task.wait(0.5)
+   startFly()
 end
 end)
 
@@ -1417,7 +1429,7 @@ getgenv().OldPos = hrp.CFrame
 
 local oldFallenHeight = workspace.FallenPartsDestroyHeight
 pcall(function()
-    workspace.FallenPartsDestroyHeight = 0/0
+   workspace.FallenPartsDestroyHeight = 0/0
 end)
 
 Camera.CameraSubject = targetHum or targetChar:FindFirstChild("Head") or targetHrp
@@ -1425,53 +1437,53 @@ notify("SkidFling", "Đang Fling mục tiêu: " .. TargetPlayer.DisplayName, 2)
 
 local parts = {}
 for _, v in ipairs(char:GetDescendants()) do
-    if v:IsA("BasePart") then
-        table.insert(parts, v)
-        v.CanCollide = false
-    end
+   if v:IsA("BasePart") then
+       table.insert(parts, v)
+       v.CanCollide = false
+   end
 end
 
 local steppedConn = RunService.Stepped:Connect(function()
-    for _, p in ipairs(parts) do
-        if p.Parent then p.CanCollide = false end
-    end
+   for _, p in ipairs(parts) do
+       if p.Parent then p.CanCollide = false end
+   end
 end)
 
 local startTime = tick()
 repeat
-    RunService.Heartbeat:Wait()
-    if not targetHrp or not targetHrp.Parent or not targetHum or targetHum.Health <= 0 then break end
-    if not hrp or not hrp.Parent then break end
+   RunService.Heartbeat:Wait()
+   if not targetHrp or not targetHrp.Parent or not targetHum or targetHum.Health <= 0 then break end
+   if not hrp or not hrp.Parent then break end
 
-    pcall(function()
-        hrp.Velocity = Vector3.new(9e7, 9e7, 9e7)
-        hrp.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
-        hrp.AssemblyLinearVelocity = Vector3.new(9e7, 9e7, 9e7)
-        hrp.AssemblySpreadVelocity = Vector3.new(9e8, 9e8, 9e8)
-    end)
+   pcall(function()
+       hrp.Velocity = Vector3.new(9e7, 9e7, 9e7)
+       hrp.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+       hrp.AssemblyLinearVelocity = Vector3.new(9e7, 9e7, 9e7)
+       hrp.AssemblySpreadVelocity = Vector3.new(9e8, 9e8, 9e8)
+   end)
 
-    hrp.CFrame = targetHrp.CFrame * CFrame.new(math.random(-150, 150)/100, 0, math.random(-150, 150)/100)
+   hrp.CFrame = targetHrp.CFrame * CFrame.new(math.random(-150, 150)/100, 0, math.random(-150, 150)/100)
 until not getgenv().FlingActive or (tick() - startTime > 2) or not TargetPlayer.Parent
 
 steppedConn:Disconnect()
 getgenv().FlingActive = false
 
 if hrp and hrp.Parent then
-    pcall(function()
-        hrp.Velocity = Vector3.new(0, 0, 0)
-        hrp.RotVelocity = Vector3.new(0, 0, 0)
-        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-    end)
-    hrp.CFrame = getgenv().OldPos
+   pcall(function()
+       hrp.Velocity = Vector3.new(0, 0, 0)
+       hrp.RotVelocity = Vector3.new(0, 0, 0)
+       hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+       hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+   end)
+   hrp.CFrame = getgenv().OldPos
 end
 
 if hum and hum.Parent then
-    Camera.CameraSubject = hum
+   Camera.CameraSubject = hum
 end
 
 pcall(function()
-    workspace.FallenPartsDestroyHeight = oldFallenHeight
+   workspace.FallenPartsDestroyHeight = oldFallenHeight
 end)
 
 notify("SkidFling", "Fling hoàn tất hoặc đã dừng!", 2)
@@ -1481,13 +1493,13 @@ end
 RunService.Heartbeat:Connect(function()
 local char = LocalPlayer.Character
 if char then
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hrp and hum and speedBypassActive then
-        if hum.MoveDirection.Magnitude > 0 then
-            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (speedBypassVal / 300))
-        end
-    end
+   local hrp = char:FindFirstChild("HumanoidRootPart")
+   local hum = char:FindFirstChildOfClass("Humanoid")
+   if hrp and hum and speedBypassActive then
+       if hum.MoveDirection.Magnitude > 0 then
+           hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (speedBypassVal / 300))
+       end
+   end
 end
 end)
 
@@ -1498,8 +1510,8 @@ addCommand({"speed", "ws"}, "Đặt tốc độ chạy mặc định (ví dụ: 
 local spd = tonumber(args[1]) or 16
 local char = LocalPlayer.Character
 if char and char:FindFirstChildOfClass("Humanoid") then
-    char:FindFirstChildOfClass("Humanoid").WalkSpeed = spd
-    InfoText.Text = "WalkSpeed đặt thành: " .. spd
+   char:FindFirstChildOfClass("Humanoid").WalkSpeed = spd
+   InfoText.Text = "WalkSpeed đặt thành: " .. spd
 end
 end)
 
@@ -1522,10 +1534,10 @@ addCommand({"jumppower", "jp"}, "Đặt sức nhảy (ví dụ: jp 100)", functi
 local jmp = tonumber(args[1]) or 50
 local char = LocalPlayer.Character
 if char and char:FindFirstChildOfClass("Humanoid") then
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    hum.UseJumpPower = true
-    hum.JumpPower = jmp
-    InfoText.Text = "JumpPower đặt thành: " .. jmp
+   local hum = char:FindFirstChildOfClass("Humanoid")
+   hum.UseJumpPower = true
+   hum.JumpPower = jmp
+   InfoText.Text = "JumpPower đặt thành: " .. jmp
 end
 end)
 
@@ -1533,19 +1545,19 @@ end)
 addCommand({"fling"}, "Fling một người chơi cụ thể (ví dụ: fling name)", function(args)
 local targets = getTargetPlayer(args[1])
 if #targets > 0 then
-    SkidFling(targets[1])
+   SkidFling(targets[1])
 end
 end)
 
 -- 5. Flingall command
 addCommand({"flingall", "killall"}, "Fling toàn bộ người chơi trong máy chủ", function()
 task.spawn(function()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            SkidFling(p)
-            task.wait(0.2)
-        end
-    end
+   for _, p in ipairs(Players:GetPlayers()) do
+       if p ~= LocalPlayer then
+           SkidFling(p)
+           task.wait(0.2)
+       end
+   end
 end)
 end)
 
@@ -1560,16 +1572,16 @@ addCommand({"noclip"}, "Đi xuyên mọi bức tường", function()
 noclipActive = true
 notify("Noclip", "Noclip đã được BẬT!", 3)
 task.spawn(function()
-    while noclipActive do
-        RunService.Stepped:Wait()
-        if LocalPlayer.Character then
-            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") and part.CanCollide then
-                    part.CanCollide = false
-                end
-            end
-        end
-    end
+   while noclipActive do
+       RunService.Stepped:Wait()
+       if LocalPlayer.Character then
+           for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+               if part:IsA("BasePart") and part.CanCollide then
+                   part.CanCollide = false
+               end
+           end
+       end
+   end
 end)
 end)
 
@@ -1583,20 +1595,20 @@ end)
 addCommand({"infjump", "ij"}, "Nhảy vô hạn trên không", function()
 infJumpActive = not infJumpActive
 if infJumpActive then
-    notify("Inf Jump", "Nhảy vô hạn đã BẬT!", 3)
-    local connection
-    connection = UserInputService.JumpRequest:Connect(function()
-        if infJumpActive then
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChildOfClass("Humanoid") then
-                char:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        else
-            connection:Disconnect()
-        end
-    end)
+   notify("Inf Jump", "Nhảy vô hạn đã BẬT!", 3)
+   local connection
+   connection = UserInputService.JumpRequest:Connect(function()
+       if infJumpActive then
+           local char = LocalPlayer.Character
+           if char and char:FindFirstChildOfClass("Humanoid") then
+               char:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+           end
+       else
+           connection:Disconnect()
+       end
+   end)
 else
-    notify("Inf Jump", "Nhảy vô hạn đã TẤT!", 3)
+   notify("Inf Jump", "Nhảy vô hạn đã TẤT!", 3)
 end
 end)
 
@@ -1604,32 +1616,32 @@ end)
 addCommand({"esp"}, "Bật nhìn xuyên tường người chơi", function()
 espActive = not espActive
 if espActive then
-    notify("ESP System", "ESP đã được kích hoạt!", 3)
-    task.spawn(function()
-        while espActive do
-            task.wait(1)
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character then
-                    local highlight = player.Character:FindFirstChild("ESPHighlight")
-                    if not highlight then
-                        highlight = Instance.new("Highlight")
-                        highlight.Name = "ESPHighlight"
-                        highlight.FillColor = Color3.fromRGB(0, 170, 255)
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        highlight.FillTransparency = 0.5
-                        highlight.Parent = player.Character
-                    end
-                end
-            end
-        end
-    end)
+   notify("ESP System", "ESP đã được kích hoạt!", 3)
+   task.spawn(function()
+       while espActive do
+           task.wait(1)
+           for _, player in ipairs(Players:GetPlayers()) do
+               if player ~= LocalPlayer and player.Character then
+                   local highlight = player.Character:FindFirstChild("ESPHighlight")
+                   if not highlight then
+                       highlight = Instance.new("Highlight")
+                       highlight.Name = "ESPHighlight"
+                       highlight.FillColor = Color3.fromRGB(0, 170, 255)
+                       highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                       highlight.FillTransparency = 0.5
+                       highlight.Parent = player.Character
+                   end
+               end
+           end
+       end
+   end)
 else
-    notify("ESP System", "ESP đã bị vô hiệu hóa!", 3)
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character and player.Character:FindFirstChild("ESPHighlight") then
-            player.Character.ESPHighlight:Destroy()
-        end
-    end
+   notify("ESP System", "ESP đã bị vô hiệu hóa!", 3)
+   for _, player in ipairs(Players:GetPlayers()) do
+       if player.Character and player.Character:FindFirstChild("ESPHighlight") then
+           player.Character.ESPHighlight:Destroy()
+       end
+   end
 end
 end)
 
@@ -1638,9 +1650,9 @@ addCommand({"unesp", "noesp"}, "Tắt nhìn xuyên tường", function()
 espActive = false
 notify("ESP System", "ESP đã tắt!", 3)
 for _, player in ipairs(Players:GetPlayers()) do
-    if player.Character and player.Character:FindFirstChild("ESPHighlight") then
-        player.Character.ESPHighlight:Destroy()
-    end
+   if player.Character and player.Character:FindFirstChild("ESPHighlight") then
+       player.Character.ESPHighlight:Destroy()
+   end
 end
 end)
 
@@ -1649,7 +1661,7 @@ addCommand({"hipheight", "hh"}, "Thay đổi độ cao phần hông (hh 10)", fu
 local val = tonumber(args[1]) or 0
 local char = LocalPlayer.Character
 if char and char:FindFirstChildOfClass("Humanoid") then
-    char:FindFirstChildOfClass("Humanoid").HipHeight = val
+   char:FindFirstChildOfClass("Humanoid").HipHeight = val
 end
 end)
 
@@ -1670,12 +1682,12 @@ end)
 addCommand({"goto", "tp"}, "Dịch chuyển tới người chơi (goto name)", function(args)
 local targets = getTargetPlayer(args[1])
 if targets[1] and targets[1].Character then
-    local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local tHrp = targets[1].Character:FindFirstChild("HumanoidRootPart")
-    if myHrp and tHrp then
-        myHrp.CFrame = tHrp.CFrame
-        notify("Goto", "Đã dịch chuyển tới " .. targets[1].DisplayName, 3)
-    end
+   local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+   local tHrp = targets[1].Character:FindFirstChild("HumanoidRootPart")
+   if myHrp and tHrp then
+       myHrp.CFrame = tHrp.CFrame
+       notify("Goto", "Đã dịch chuyển tới " .. targets[1].DisplayName, 3)
+   end
 end
 end)
 
@@ -1683,7 +1695,7 @@ end)
 addCommand({"reset", "suicide"}, "Tự sát / Reset nhân vật", function()
 local char = LocalPlayer.Character
 if char and char:FindFirstChildOfClass("Humanoid") then
-    char:FindFirstChildOfClass("Humanoid").Health = 0
+   char:FindFirstChildOfClass("Humanoid").Health = 0
 end
 end)
 
@@ -1691,16 +1703,16 @@ end)
 addCommand({"spawn"}, "Dịch chuyển về Spawn của map", function()
 local spawnPoints = {}
 for _, obj in ipairs(workspace:GetDescendants()) do
-    if obj:IsA("SpawnLocation") then
-        table.insert(spawnPoints, obj)
-    end
+   if obj:IsA("SpawnLocation") then
+       table.insert(spawnPoints, obj)
+   end
 end
 if #spawnPoints > 0 then
-    local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if myHrp then
-        myHrp.CFrame = spawnPoints[1].CFrame * CFrame.new(0, 5, 0)
-        notify("Teleport", "Đã về điểm spawn!", 3)
-    end
+   local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+   if myHrp then
+       myHrp.CFrame = spawnPoints[1].CFrame * CFrame.new(0, 5, 0)
+       notify("Teleport", "Đã về điểm spawn!", 3)
+   end
 end
 end)
 
@@ -1738,10 +1750,10 @@ local response = game:HttpGet(Api)
 local data = HttpService:JSONDecode(response)
 local servers = data.data
 for _, server in ipairs(servers) do
-    if server.playing < server.maxPlayers and server.id ~= game.JobId then
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
-        break
-    end
+   if server.playing < server.maxPlayers and server.id ~= game.JobId then
+       TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
+       break
+   end
 end
 end)
 
@@ -1755,24 +1767,24 @@ local char = LocalPlayer.Character
 if not char then return end
 
 for _, v in ipairs(char:GetDescendants()) do
-    if v:IsA("Motor6D") then
-        originalC0s[v] = v.C0
-    end
+   if v:IsA("Motor6D") then
+       originalC0s[v] = v.C0
+   end
 end
 
 task.spawn(function()
-    while trollAnimActive and char.Parent do
-        for _, v in ipairs(char:GetDescendants()) do
-            if v:IsA("Motor6D") and v.Name ~= "Neck" then
-                v.C0 = v.C0 * CFrame.Angles(
-                    math.rad(math.random(-25, 25)),
-                    math.rad(math.random(-25, 25)),
-                    math.rad(math.random(-25, 25))
-                )
-            end
-        end
-        task.wait(0.05)
-    end
+   while trollAnimActive and char.Parent do
+       for _, v in ipairs(char:GetDescendants()) do
+           if v:IsA("Motor6D") and v.Name ~= "Neck" then
+               v.C0 = v.C0 * CFrame.Angles(
+                   math.rad(math.random(-25, 25)),
+                   math.rad(math.random(-25, 25)),
+                   math.rad(math.random(-25, 25))
+               )
+           end
+       end
+       task.wait(0.05)
+   end
 end)
 end)
 
@@ -1781,11 +1793,11 @@ addCommand({"untrollanim"}, "Tắt hoạt ảnh troll và đặt lại cơ thể
 trollAnimActive = false
 local char = LocalPlayer.Character
 if char then
-    for motor, origC0 in pairs(originalC0s) do
-        if motor and motor.Parent then
-            motor.C0 = origC0
-        end
-    end
+   for motor, origC0 in pairs(originalC0s) do
+       if motor and motor.Parent then
+           motor.C0 = origC0
+       end
+   end
 end
 originalC0s = {}
 notify("Troll Animation", "Đã phục hồi trạng thái cơ thể ban đầu!", 3)
@@ -1807,13 +1819,13 @@ originalHipHeight = hum.HipHeight
 hum.HipHeight = -5.5
 
 burrowConnection = RunService.Stepped:Connect(function()
-    if LocalPlayer.Character then
-        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-    end
+   if LocalPlayer.Character then
+       for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+           if part:IsA("BasePart") then
+               part.CanCollide = false
+           end
+       end
+   end
 end)
 notify("Burrow System", "Đã độn thổ xuống mặt đất!", 3)
 end)
@@ -1821,13 +1833,13 @@ end)
 addCommand({"uninvisible", "uninvis", "undontho"}, "Ngừng độn thổ và đi lên", function()
 burrowActive = false
 if burrowConnection then
-    burrowConnection:Disconnect()
-    burrowConnection = nil
+   burrowConnection:Disconnect()
+   burrowConnection = nil
 end
 local char = LocalPlayer.Character
 local hum = char and char:FindFirstChildOfClass("Humanoid")
 if hum then
-    hum.HipHeight = originalHipHeight
+   hum.HipHeight = originalHipHeight
 end
 notify("Burrow System", "Đã quay trở lại mặt đất bình thường!", 3)
 end)
@@ -1867,11 +1879,11 @@ local tool = Instance.new("Tool")
 tool.Name = "Teleport Tool"
 tool.RequiresHandle = false
 tool.Activated:Connect(function()
-    local mouse = LocalPlayer:GetMouse()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        char:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
-    end
+   local mouse = LocalPlayer:GetMouse()
+   local char = LocalPlayer.Character
+   if char and char:FindFirstChild("HumanoidRootPart") then
+       char:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+   end
 end)
 tool.Parent = LocalPlayer.Backpack
 notify("TP Tool", "Đã cấp công cụ dịch chuyển!", 3)
@@ -1883,31 +1895,31 @@ addCommand({"killaura"}, "Tự động tấn công quái vật ở gần", funct
 killauraActive = not killauraActive
 notify("Killaura", "Killaura: " .. (killauraActive and "BẬT" or "TẮT"), 3)
 task.spawn(function()
-    while killauraActive do
-        task.wait(0.1)
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local tool = char and char:FindFirstChildOfClass("Tool")
-        if hrp then
-            for _, desc in ipairs(workspace:GetDescendants()) do
-                if desc:IsA("Humanoid") and desc.Parent ~= char and not Players:GetPlayerFromCharacter(desc.Parent) then
-                    local enemyHrp = desc.Parent:FindFirstChild("HumanoidRootPart") or desc.Parent:FindFirstChild("Torso") or desc.Parent:FindFirstChild("UpperTorso")
-                    if enemyHrp and (enemyHrp.Position - hrp.Position).Magnitude <= 25 then
-                        if tool then
-                            local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("BasePart")
-                            if handle then
-                                firetouchinterest(enemyHrp, handle, 0)
-                                firetouchinterest(enemyHrp, handle, 1)
-                            end
-                        end
-                        pcall(function()
-                            desc.Health = 0
-                        end)
-                    end
-                end
-            end
-        end
-    end
+   while killauraActive do
+       task.wait(0.1)
+       local char = LocalPlayer.Character
+       local hrp = char and char:FindFirstChild("HumanoidRootPart")
+       local tool = char and char:FindFirstChildOfClass("Tool")
+       if hrp then
+           for _, desc in ipairs(workspace:GetDescendants()) do
+               if desc:IsA("Humanoid") and desc.Parent ~= char and not Players:GetPlayerFromCharacter(desc.Parent) then
+                   local enemyHrp = desc.Parent:FindFirstChild("HumanoidRootPart") or desc.Parent:FindFirstChild("Torso") or desc.Parent:FindFirstChild("UpperTorso")
+                   if enemyHrp and (enemyHrp.Position - hrp.Position).Magnitude <= 25 then
+                       if tool then
+                           local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("BasePart")
+                           if handle then
+                               firetouchinterest(enemyHrp, handle, 0)
+                               firetouchinterest(enemyHrp, handle, 1)
+                           end
+                       end
+                       pcall(function()
+                           desc.Health = 0
+                       end)
+                   end
+               end
+           end
+       end
+   end
 end)
 end)
 
@@ -1917,24 +1929,24 @@ addCommand({"god"}, "Bật chế độ đẩy lùi quái vật/NPC ra xa", funct
 pushMobsActive = true
 notify("God Mode", "Đã kích hoạt đẩy lùi quái vật!", 3)
 task.spawn(function()
-    while pushMobsActive do
-        task.wait(0.1)
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            for _, desc in ipairs(workspace:GetDescendants()) do
-                if desc:IsA("Humanoid") and desc.Parent ~= char and not Players:GetPlayerFromCharacter(desc.Parent) then
-                    local enemyHrp = desc.Parent:FindFirstChild("HumanoidRootPart") or desc.Parent:FindFirstChild("Torso") or desc.Parent:FindFirstChild("UpperTorso")
-                    if enemyHrp and (enemyHrp.Position - hrp.Position).Magnitude <= 20 then
-                        local direction = (enemyHrp.Position - hrp.Position).Unit
-                        pcall(function()
-                            enemyHrp.AssemblyLinearVelocity = direction * 150 + Vector3.new(0, 30, 0)
-                        end)
-                    end
-                end
-            end
-        end
-    end
+   while pushMobsActive do
+       task.wait(0.1)
+       local char = LocalPlayer.Character
+       local hrp = char and char:FindFirstChild("HumanoidRootPart")
+       if hrp then
+           for _, desc in ipairs(workspace:GetDescendants()) do
+               if desc:IsA("Humanoid") and desc.Parent ~= char and not Players:GetPlayerFromCharacter(desc.Parent) then
+                   local enemyHrp = desc.Parent:FindFirstChild("HumanoidRootPart") or desc.Parent:FindFirstChild("Torso") or desc.Parent:FindFirstChild("UpperTorso")
+                   if enemyHrp and (enemyHrp.Position - hrp.Position).Magnitude <= 20 then
+                       local direction = (enemyHrp.Position - hrp.Position).Unit
+                       pcall(function()
+                           enemyHrp.AssemblyLinearVelocity = direction * 150 + Vector3.new(0, 30, 0)
+                       end)
+                   end
+               end
+           end
+       end
+   end
 end)
 end)
 
@@ -1949,17 +1961,17 @@ addCommand({"walkfling"}, "Bật Walk Fling (Chạm là bay người chơi)", fu
 walkFlingActive = not walkFlingActive
 notify("Walk Fling", "Walk Fling: " .. (walkFlingActive and "BẬT" or "TẮT"), 3)
 task.spawn(function()
-    while walkFlingActive do
-        RunService.Heartbeat:Wait()
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local oldV = hrp.Velocity
-            hrp.Velocity = Vector3.new(25000, 25000, 25000)
-            RunService.RenderStepped:Wait()
-            hrp.Velocity = oldV
-        end
-    end
+   while walkFlingActive do
+       RunService.Heartbeat:Wait()
+       local char = LocalPlayer.Character
+       local hrp = char and char:FindFirstChild("HumanoidRootPart")
+       if hrp then
+           local oldV = hrp.Velocity
+           hrp.Velocity = Vector3.new(25000, 25000, 25000)
+           RunService.RenderStepped:Wait()
+           hrp.Velocity = oldV
+       end
+   end
 end)
 end)
 
@@ -1969,23 +1981,23 @@ local attachTarget = nil
 addCommand({"attach"}, "Dính chặt vào người chơi khác (attach name)", function(args)
 local targets = getTargetPlayer(args[1])
 if targets[1] and targets[1] ~= LocalPlayer then
-    attachTarget = targets[1]
-    attachActive = true
-    notify("Attach", "Đang dính vào: " .. attachTarget.DisplayName, 3)
-    task.spawn(function()
-        while attachActive and attachTarget and attachTarget.Parent do
-            RunService.Heartbeat:Wait()
-            local char = LocalPlayer.Character
-            local myHrp = char and char:FindFirstChild("HumanoidRootPart")
-            local tChar = attachTarget.Character
-            local tHrp = tChar and tChar:FindFirstChild("HumanoidRootPart")
-            if myHrp and tHrp then
-                myHrp.CFrame = tHrp.CFrame * CFrame.new(0, 0, 2.5)
-            end
-        end
-    end)
+   attachTarget = targets[1]
+   attachActive = true
+   notify("Attach", "Đang dính vào: " .. attachTarget.DisplayName, 3)
+   task.spawn(function()
+       while attachActive and attachTarget and attachTarget.Parent do
+           RunService.Heartbeat:Wait()
+           local char = LocalPlayer.Character
+           local myHrp = char and char:FindFirstChild("HumanoidRootPart")
+           local tChar = attachTarget.Character
+           local tHrp = tChar and tChar:FindFirstChild("HumanoidRootPart")
+           if myHrp and tHrp then
+               myHrp.CFrame = tHrp.CFrame * CFrame.new(0, 0, 2.5)
+           end
+       end
+   end)
 else
-    notify("Attach", "Không tìm thấy mục tiêu hợp lệ!", 3)
+   notify("Attach", "Không tìm thấy mục tiêu hợp lệ!", 3)
 end
 end)
 
@@ -1996,7 +2008,7 @@ notify("Attach", "Đã hủy dính người chơi!", 3)
 end)
 
 
--- ==================== NEW FEATURES: ANTIFLING, DANCE, HEADSIT ====================
+-- ==================== NEW COURT FEATURES: ANTIFLING, DANCE, HEADSIT ====================
 
 -- 1. Anti-Fling
 local antiFlingActive = false
@@ -2005,34 +2017,34 @@ local antiFlingConnection = nil
 local function toggleAntiFling(state)
 antiFlingActive = state
 if antiFlingActive then
-    antiFlingConnection = RunService.Stepped:Connect(function()
-        local char = LocalPlayer.Character
-        if not char then return end
+   antiFlingConnection = RunService.Stepped:Connect(function()
+       local char = LocalPlayer.Character
+       if not char then return end
 
-        for _, item in ipairs(char:GetDescendants()) do
-            if item:IsA("BasePart") then
-                item.Velocity = Vector3.new(0,0,0)
-                item.RotVelocity = Vector3.new(0,0,0)
-            end
-        end
+       for _, item in ipairs(char:GetDescendants()) do
+           if item:IsA("BasePart") then
+               item.Velocity = Vector3.new(0,0,0)
+               item.RotVelocity = Vector3.new(0,0,0)
+           end
+       end
 
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                for _, part in ipairs(player.Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end
-    end)
-    notify("Anti-Fling", "Đã bật chế độ chống bị văng (Anti-Fling)!", 3)
+       for _, player in ipairs(Players:GetPlayers()) do
+           if player ~= LocalPlayer and player.Character then
+               for _, part in ipairs(player.Character:GetDescendants()) do
+                   if part:IsA("BasePart") then
+                       part.CanCollide = false
+                   end
+               end
+           end
+       end
+   end)
+   notify("Anti-Fling", "Đã bật chế độ chống bị văng (Anti-Fling)!", 3)
 else
-    if antiFlingConnection then
-        antiFlingConnection:Disconnect()
-        antiFlingConnection = nil
-    end
-    notify("Anti-Fling", "Đã tắt chống văng!", 3)
+   if antiFlingConnection then
+       antiFlingConnection:Disconnect()
+       antiFlingConnection = nil
+   end
+   notify("Anti-Fling", "Đã tắt chống văng!", 3)
 end
 end
 
@@ -2052,16 +2064,16 @@ if danceActive then return end
 danceActive = true
 notify("Dance System", "Đang tự động nhảy múa cực cuốn!", 3)
 task.spawn(function()
-    local t = 0
-    while danceActive do
-        RunService.RenderStepped:Wait()
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            t = t + 0.15
-            hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(6 * math.sin(t)), 0) * CFrame.new(0.15 * math.sin(t * 2), 0.05 * math.cos(t), 0)
-        end
-    end
+   local t = 0
+   while danceActive do
+       RunService.RenderStepped:Wait()
+       local char = LocalPlayer.Character
+       local hrp = char and char:FindFirstChild("HumanoidRootPart")
+       if hrp then
+           t = t + 0.15
+           hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(6 * math.sin(t)), 0) * CFrame.new(0.15 * math.sin(t * 2), 0.05 * math.cos(t), 0)
+       end
+   end
 end)
 end)
 
@@ -2079,49 +2091,49 @@ local headsitConnection = nil
 addCommand({"headsit"}, "Ngồi vào đầu người chơi khác (headsit name)", function(args)
 local targets = getTargetPlayer(args[1])
 if targets[1] and targets[1] ~= LocalPlayer then
-    headsitTarget = targets[1]
-    headsitActive = true
-    notify("Headsit System", "Đang ngồi lên đầu: " .. headsitTarget.DisplayName, 3)
+   headsitTarget = targets[1]
+   headsitActive = true
+   notify("Headsit System", "Đang ngồi lên đầu: " .. headsitTarget.DisplayName, 3)
 
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then hum.Sitting = true end
+   local char = LocalPlayer.Character
+   local hum = char and char:FindFirstChildOfClass("Humanoid")
+   if hum then hum.Sitting = true end
 
-    if headsitConnection then headsitConnection:Disconnect() end
-    headsitConnection = RunService.Heartbeat:Connect(function()
-        local success, err = pcall(function()
-            if not headsitActive or not headsitTarget or not headsitTarget.Parent then
-                if headsitConnection then headsitConnection:Disconnect() headsitConnection = nil end
-                return
-            end
-            local myChar = LocalPlayer.Character
-            local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            local tChar = headsitTarget.Character
-            local tHead = tChar and tChar:FindFirstChild("Head")
-            if myHrp and tHead then
-                myHrp.CFrame = tHead.CFrame * CFrame.new(0, 1.8, 0)
-                myHrp.Velocity = Vector3.new(0, 0, 0)
-                local myHum = myChar:FindFirstChildOfClass("Humanoid")
-                if myHum then myHum.Sitting = true end
-            else
-                headsitActive = false
-                if headsitConnection then headsitConnection:Disconnect() headsitConnection = nil end
-            end
-        end)
-        if not success then
-            if headsitConnection then headsitConnection:Disconnect() headsitConnection = nil end
-        end
-    end)
+   if headsitConnection then headsitConnection:Disconnect() end
+   headsitConnection = RunService.Heartbeat:Connect(function()
+       local success, err = pcall(function()
+           if not headsitActive or not headsitTarget or not headsitTarget.Parent then
+               if headsitConnection then headsitConnection:Disconnect() headsitConnection = nil end
+               return
+           end
+           local myChar = LocalPlayer.Character
+           local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+           local tChar = headsitTarget.Character
+           local tHead = tChar and tChar:FindFirstChild("Head")
+           if myHrp and tHead then
+               myHrp.CFrame = tHead.CFrame * CFrame.new(0, 1.8, 0)
+               myHrp.Velocity = Vector3.new(0, 0, 0)
+               local myHum = myChar:FindFirstChildOfClass("Humanoid")
+               if myHum then myHum.Sitting = true end
+           else
+               headsitActive = false
+               if headsitConnection then headsitConnection:Disconnect() headsitConnection = nil end
+           end
+       end)
+       if not success then
+           if headsitConnection then headsitConnection:Disconnect() headsitConnection = nil end
+       end
+   end)
 else
-    notify("Headsit System", "Không tìm thấy người chơi hợp lệ!", 3)
+   notify("Headsit System", "Không tìm thấy người chơi hợp lệ!", 3)
 end
 end)
 
 addCommand({"unheadsit", "noheadsit"}, "Rời khỏi đầu người chơi đang ngồi", function()
 headsitActive = false
 if headsitConnection then
-    headsitConnection:Disconnect()
-    headsitConnection = nil
+   headsitConnection:Disconnect()
+   headsitConnection = nil
 end
 headsitTarget = nil
 local char = LocalPlayer.Character
@@ -2139,14 +2151,14 @@ spinSpeed = tonumber(args[1]) or 20
 spinActive = true
 notify("Spin", "Đã kích hoạt xoay vòng!", 2)
 task.spawn(function()
-    while spinActive do
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0)
-        end
-        task.wait()
-    end
+   while spinActive do
+       local char = LocalPlayer.Character
+       local hrp = char and char:FindFirstChild("HumanoidRootPart")
+       if hrp then
+           hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0)
+       end
+       task.wait()
+   end
 end)
 end)
 
@@ -2160,24 +2172,24 @@ addCommand({"float"}, "Lơ lửng trên không trung", function()
 floatActive = true
 notify("Float", "Đã lơ lửng trên không trung!", 2)
 task.spawn(function()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        if floatPart then floatPart:Destroy() end
-        floatPart = Instance.new("BodyPosition")
-        floatPart.Name = "PureAdmin_FloatPart"
-        floatPart.MaxForce = Vector3.new(0, 9e9, 0)
-        floatPart.Position = hrp.Position + Vector3.new(0, 5, 0)
-        floatPart.Parent = hrp
-    end
+   local char = LocalPlayer.Character
+   local hrp = char and char:FindFirstChild("HumanoidRootPart")
+   if hrp then
+       if floatPart then floatPart:Destroy() end
+       floatPart = Instance.new("BodyPosition")
+       floatPart.Name = "PureAdmin_FloatPart"
+       floatPart.MaxForce = Vector3.new(0, 9e9, 0)
+       floatPart.Position = hrp.Position + Vector3.new(0, 5, 0)
+       floatPart.Parent = hrp
+   end
 end)
 end)
 
 addCommand({"unfloat"}, "Hạ xuống mặt đất", function()
 floatActive = false
 if floatPart then
-    floatPart:Destroy()
-    floatPart = nil
+   floatPart:Destroy()
+   floatPart = nil
 end
 notify("Float", "Đã hạ cánh!", 2)
 end)
@@ -2187,14 +2199,14 @@ addCommand({"loopjump"}, "Nhảy liên tục tự động", function()
 loopJumpActive = true
 notify("Loop Jump", "Đã bật tự động nhảy!", 2)
 task.spawn(function()
-    while loopJumpActive do
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.Jump = true
-        end
-        task.wait(0.2)
-    end
+   while loopJumpActive do
+       local char = LocalPlayer.Character
+       local hum = char and char:FindFirstChildOfClass("Humanoid")
+       if hum then
+           hum.Jump = true
+       end
+       task.wait(0.2)
+   end
 end)
 end)
 
@@ -2210,17 +2222,17 @@ if spamMessage == "" then spamMessage = "Pure Commander Console on Top!" end
 spamChatActive = true
 notify("Spam Chat", "Đã bật tự động Spam Chat!", 2)
 task.spawn(function()
-    while spamChatActive do
-        local success, _ = pcall(function()
-            local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-            if chatEvents and chatEvents:FindFirstChild("SayMessageRequest") then
-                chatEvents.SayMessageRequest:FireServer(spamMessage, "All")
-            else
-                game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(spamMessage)
-            end
-        end)
-        task.wait(1.5)
-    end
+   while spamChatActive do
+       local success, _ = pcall(function()
+           local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+           if chatEvents and chatEvents:FindFirstChild("SayMessageRequest") then
+               chatEvents.SayMessageRequest:FireServer(spamMessage, "All")
+           else
+               game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(spamMessage)
+           end
+       end)
+       task.wait(1.5)
+   end
 end)
 end)
 
@@ -2233,21 +2245,21 @@ end)
 addCommand({"flashbang"}, "Tạo hiệu ứng đèn nháy flash cực mạnh", function()
 notify("Flashbang", "Tạo chớp lóa!", 1)
 task.spawn(function()
-    local flash = Instance.new("Frame")
-    flash.Size = UDim2.new(1, 0, 1, 0)
-    flash.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    flash.BackgroundTransparency = 0
-    flash.Parent = PureAdminGUI
-    
-    local snd = Instance.new("Sound", workspace)
-    snd.SoundId = "rbxassetid://138080534"
-    snd.Volume = 3
-    snd:Play()
-    
-    TweenService:Create(flash, TweenInfo.new(1.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
-    task.wait(2)
-    flash:Destroy()
-    snd:Destroy()
+   local flash = Instance.new("Frame")
+   flash.Size = UDim2.new(1, 0, 1, 0)
+   flash.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+   flash.BackgroundTransparency = 0
+   flash.Parent = PureAdminGUI
+   
+   local snd = Instance.new("Sound", workspace)
+   snd.SoundId = "rbxassetid://138080534"
+   snd.Volume = 3
+   snd:Play()
+   
+   TweenService:Create(flash, TweenInfo.new(1.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+   task.wait(2)
+   flash:Destroy()
+   snd:Destroy()
 end)
 end)
 
@@ -2255,10 +2267,10 @@ end)
 addCommand({"disablescripts"}, "Tắt tất cả local scripts chạy ngầm", function()
 local count = 0
 for _, scr in ipairs(game:GetDescendants()) do
-    if scr:IsA("LocalScript") and scr ~= script and not scr:IsDescendantOf(PureAdminGUI) then
-        scr.Enabled = false
-        count = count + 1
-    end
+   if scr:IsA("LocalScript") and scr ~= script and not scr:IsDescendantOf(PureAdminGUI) then
+       scr.Enabled = false
+       count = count + 1
+   end
 end
 notify("System Protection", "Đã tắt " .. count .. " kịch bản chạy ngầm!", 3)
 end)
@@ -2268,12 +2280,12 @@ addCommand({"setcreeper"}, "Tạo tiếng Creeper nổ hài hước", function()
 local char = LocalPlayer.Character
 local hrp = char and char:FindFirstChild("HumanoidRootPart")
 if hrp then
-    local s = Instance.new("Sound", hrp)
-    s.SoundId = "rbxassetid://9114223126"
-    s.Volume = 5
-    s:Play()
-    task.delay(4, function() s:Destroy() end)
-    notify("Meme", "Ssssss... BOOM!", 2)
+   local s = Instance.new("Sound", hrp)
+   s.SoundId = "rbxassetid://9114223126"
+   s.Volume = 5
+   s:Play()
+   task.delay(4, function() s:Destroy() end)
+   notify("Meme", "Ssssss... BOOM!", 2)
 end
 end)
 
@@ -2281,12 +2293,12 @@ end)
 addCommand({"nude"}, "Lột đồ nhanh nhân vật", function()
 local char = LocalPlayer.Character
 if char then
-    for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("Accessory") or v:IsA("ShirtGraphic") then
-            v:Destroy()
-        end
-    end
-    notify("Clothes Cleaned", "Lột đồ thành công!", 2)
+   for _, v in ipairs(char:GetChildren()) do
+       if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("Accessory") or v:IsA("ShirtGraphic") then
+           v:Destroy()
+       end
+   end
+   notify("Clothes Cleaned", "Lột đồ thành công!", 2)
 end
 end)
 
@@ -2294,12 +2306,12 @@ end)
 addCommand({"clearentities"}, "Xóa các vật phẩm rác rơi vãi trên đất", function()
 local count = 0
 for _, child in ipairs(workspace:GetChildren()) do
-    if child:IsA("Tool") or (child:IsA("BasePart") and not Players:GetPlayerFromCharacter(child.Parent)) then
-        pcall(function()
-            child:Destroy()
-            count = count + 1
-        end)
-    end
+   if child:IsA("Tool") or (child:IsA("BasePart") and not Players:GetPlayerFromCharacter(child.Parent)) then
+       pcall(function()
+           child:Destroy()
+           count = count + 1
+       end)
+   end
 end
 notify("Cleanup Engine", "Đã dọn dẹp xong " .. count .. " vật thể rác!", 3)
 end)
@@ -2307,18 +2319,19 @@ end)
 -- LOCK WORKSPACE & UNLOCK WORKSPACE
 addCommand({"lockworkspace"}, "Khóa toàn bộ di chuyển vật lý map", function()
 for _, part in ipairs(workspace:GetDescendants()) do
-    if part:IsA("BasePart") then
-        part.Anchored = true
-    end
+   if part:IsA("BasePart") then
+       part.Anchored = true
+   end
 end
 notify("Physics Lock", "Đã khóa cứng bản đồ!", 3)
 end)
 
+-- UNLOCK WORKSPACE
 addCommand({"unlockworkspace"}, "Mở khóa di chuyển vật lý map", function()
 for _, part in ipairs(workspace:GetDescendants()) do
-    if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
-        part.Anchored = false
-    end
+   if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
+       part.Anchored = false
+   end
 end
 notify("Physics Lock", "Đã mở khóa di chuyển tự do!", 3)
 end)
@@ -2348,25 +2361,25 @@ addCommand({"espboxes"}, "Vẽ khung định vị người chơi toàn máy ch�
 espBoxesActive = not espBoxesActive
 notify("ESP Boxes", "Bật chế độ quét hộp định vị: " .. (espBoxesActive and "BẬT" or "TẮT"), 3)
 task.spawn(function()
-    while espBoxesActive do
-        task.wait(1)
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
-                local box = p.Character:FindFirstChild("PureBoxESP")
-                if not box then
-                    box = Instance.new("BoxHandleAdornment")
-                    box.Name = "PureBoxESP"
-                    box.Size = p.Character:GetExtentsSize() + Vector3.new(0.5, 0.5, 0.5)
-                    box.Color3 = getgenv().ThemeColor
-                    box.AlwaysOnTop = true
-                    box.ZIndex = 5
-                    box.Transparency = 0.6
-                    box.Adornee = p.Character:FindFirstChild("HumanoidRootPart") or p.Character:FindFirstChild("Torso")
-                    box.Parent = p.Character
-                end
-            end
-        end
-    end
+   while espBoxesActive do
+       task.wait(1)
+       for _, p in ipairs(Players:GetPlayers()) do
+           if p ~= LocalPlayer and p.Character then
+               local box = p.Character:FindFirstChild("PureBoxESP")
+               if not box then
+                   box = Instance.new("BoxHandleAdornment")
+                   box.Name = "PureBoxESP"
+                   box.Size = p.Character:GetExtentsSize() + Vector3.new(0.5, 0.5, 0.5)
+                   box.Color3 = getgenv().ThemeColor
+                   box.AlwaysOnTop = true
+                   box.ZIndex = 5
+                   box.Transparency = 0.6
+                   box.Adornee = p.Character:FindFirstChild("HumanoidRootPart") or p.Character:FindFirstChild("Torso")
+                   box.Parent = p.Character
+               end
+           end
+       end
+   end
 end)
 end)
 
@@ -2375,12 +2388,12 @@ addCommand({"speedboost"}, "Tăng tốc chạy cực nhanh trong 2 giây", funct
 local char = LocalPlayer.Character
 local hum = char and char:FindFirstChildOfClass("Humanoid")
 if hum then
-    local oldSpeed = hum.WalkSpeed
-    hum.WalkSpeed = oldSpeed * 3
-    notify("Engine Boost", "Kích hoạt tăng tốc đột ngột!", 1)
-    task.delay(2, function()
-        if hum then hum.WalkSpeed = oldSpeed end
-    end)
+   local oldSpeed = hum.WalkSpeed
+   hum.WalkSpeed = oldSpeed * 3
+   notify("Engine Boost", "Kích hoạt tăng tốc đột ngột!", 1)
+   task.delay(2, function()
+       if hum then hum.WalkSpeed = oldSpeed end
+   end)
 end
 end)
 
@@ -2397,11 +2410,11 @@ local tool = Instance.new("Tool")
 tool.Name = "Click Delete Tool"
 tool.RequiresHandle = false
 tool.Activated:Connect(function()
-    local mouse = LocalPlayer:GetMouse()
-    local target = mouse.Target
-    if target and target.Parent and not target:IsDescendantOf(LocalPlayer.Character) then
-        pcall(function() target:Destroy() end)
-    end
+   local mouse = LocalPlayer:GetMouse()
+   local target = mouse.Target
+   if target and target.Parent and not target:IsDescendantOf(LocalPlayer.Character) then
+       pcall(function() target:Destroy() end)
+   end
 end)
 tool.Parent = LocalPlayer.Backpack
 notify("Tool Dispatch", "Đã cấp búa xóa vật thể!", 3)
@@ -2424,11 +2437,11 @@ end)
 addCommand({"antilag"}, "Tăng tốc game bằng cách xóa textures rác", function()
 notify("Lag Reducer", "Đang dọn dẹp các hiệu ứng thừa...", 2)
 pcall(function()
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Decal") or v:IsA("Texture") then
-            v:Destroy()
-        end
-    end
+   for _, v in pairs(workspace:GetDescendants()) do
+       if v:IsA("Decal") or v:IsA("Texture") then
+           v:Destroy()
+       end
+   end
 end)
 notify("Lag Reducer", "Đã tối ưu hóa bộ nhớ đệm thành công!", 3)
 end)
@@ -2437,12 +2450,12 @@ end)
 addCommand({"blocky"}, "Chuyển hóa cơ thể thành dạng hộp hình chữ nhật", function()
 local char = LocalPlayer.Character
 if char then
-    for _, limb in ipairs(char:GetChildren()) do
-        if limb:IsA("CharacterMesh") or limb:IsA("Accessory") then
-            limb:Destroy()
-        end
-    end
-    notify("Chuyển hóa", "Đã hóa thân thành nhân vật hình khối vuông!", 3)
+   for _, limb in ipairs(char:GetChildren()) do
+       if limb:IsA("CharacterMesh") or limb:IsA("Accessory") then
+           limb:Destroy()
+       end
+   end
+   notify("Chuyển hóa", "Đã hóa thân thành nhân vật hình khối vuông!", 3)
 end
 end)
 
@@ -2499,98 +2512,98 @@ local commandBatch = {
 -- Batch Register Processing
 for _, item in ipairs(commandBatch) do
 addCommand({item[1]}, item[2], function(args)
-    local cmdName = item[1]
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
+   local cmdName = item[1]
+   local char = LocalPlayer.Character
+   local hum = char and char:FindFirstChildOfClass("Humanoid")
 
-    local success, err = pcall(function()
-        if cmdName == "sit" and hum then hum.Sitting = true
-        elseif cmdName == "jump" and hum then hum.Jump = true
-        elseif cmdName == "unseat" and hum then hum.Sit = false
-        elseif cmdName == "removehats" and char then
-            for _, v in ipairs(char:GetChildren()) do
-                if v:IsA("Accessory") then v:Destroy() end
-            end
-        elseif cmdName == "clearclothing" and char then
-            for _, v in ipairs(char:GetChildren()) do
-                if v:IsA("Shirt") or v:IsA("Pants") then v:Destroy() end
-            end
-        elseif cmdName == "anchor" and char then
-            for _, v in ipairs(char:GetDescendants()) do
-                if v:IsA("BasePart") then v.Anchored = true end
-            end
-        elseif cmdName == "unanchor" and char then
-            for _, v in ipairs(char:GetDescendants()) do
-                if v:IsA("BasePart") then v.Anchored = false end
-            end
-        elseif cmdName == "unfreezecam" then
-            Camera.CameraType = Enum.CameraType.Custom
+   local success, err = pcall(function()
+       if cmdName == "sit" and hum then hum.Sitting = true
+       elseif cmdName == "jump" and hum then hum.Jump = true
+       elseif cmdName == "unseat" and hum then hum.Sit = false
+       elseif cmdName == "removehats" and char then
+           for _, v in ipairs(char:GetChildren()) do
+               if v:IsA("Accessory") then v:Destroy() end
+           end
+       elseif cmdName == "clearclothing" and char then
+           for _, v in ipairs(char:GetChildren()) do
+               if v:IsA("Shirt") or v:IsA("Pants") then v:Destroy() end
+           end
+       elseif cmdName == "anchor" and char then
+           for _, v in ipairs(char:GetDescendants()) do
+               if v:IsA("BasePart") then v.Anchored = true end
+           end
+       elseif cmdName == "unanchor" and char then
+           for _, v in ipairs(char:GetDescendants()) do
+               if v:IsA("BasePart") then v.Anchored = false end
+           end
+       elseif cmdName == "unfreezecam" then
+           Camera.CameraType = Enum.CameraType.Custom
 
-        elseif cmdName == "lowgravity" then
-            workspace.Gravity = 50
-        elseif cmdName == "highgravity" then
-            workspace.Gravity = 500
-        elseif cmdName == "moonjump" and hum then
-            hum.UseJumpPower = true
-            hum.JumpPower = 150
-        elseif cmdName == "superjump" and hum then
-            hum.UseJumpPower = true
-            hum.JumpPower = 250
-        elseif cmdName == "teleporttool" then
-            local tool = Instance.new("Tool")
-            tool.Name = "Teleport Tool"
-            tool.RequiresHandle = false
-            tool.Activated:Connect(function()
-                local pos = UserInputService:GetMouseLocation()
-                local ray = Camera:ViewportPointToRay(pos.X, pos.Y)
-                local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
-                if raycastResult and char then
-                    char:MoveTo(raycastResult.Position)
-                end
-            end)
-            tool.Parent = LocalPlayer.Backpack
-        elseif cmdName == "view" then
-            local targets = getTargetPlayer(args[1])
-            if targets[1] and targets[1].Character then
-                Camera.CameraSubject = targets[1].Character:FindFirstChildOfClass("Humanoid")
-            end
-        elseif cmdName == "unview" and hum then
-            Camera.CameraSubject = hum
-        elseif cmdName == "headless" and char then
-            local head = char:FindFirstChild("Head")
-            if head then head.Transparency = 1 end
-            local face = head and head:FindFirstChildOfClass("Decal")
-            if face then face:Destroy() end
-        elseif cmdName == "blockhead" and char then
-            local head = char:FindFirstChild("Head")
-            local mesh = head and head:FindFirstChildOfClass("SpecialMesh")
-            if mesh then mesh:Destroy() end
-        elseif cmdName == "setrighthandsize" and char then
-            local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-            local scaleVal = tonumber(args[1]) or 2
-            if hand and hand:IsA("BasePart") then
-                hand.Size = hand.Size * scaleVal
-            end
-        elseif cmdName == "setlefthandsize" and char then
-            local hand = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
-            local scaleVal = tonumber(args[1]) or 2
-            if hand and hand:IsA("BasePart") then
-                hand.Size = hand.Size * scaleVal
-            end
-        elseif cmdName == "infyield" then
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
-        elseif cmdName == "loaddex" then
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
-        elseif cmdName == "loadspy" then
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua"))()
-        else
-            InfoText.Text = "Lệnh đã chạy thành công: " .. cmdName
-        end
-    end)
-    if not success then
-        InfoText.TextColor3 = Color3.fromRGB(255, 75, 75)
-        InfoText.Text = "Lỗi lệnh [" .. cmdName .. "]: " .. tostring(err)
-    end
+       elseif cmdName == "lowgravity" then
+           workspace.Gravity = 50
+       elseif cmdName == "highgravity" then
+           workspace.Gravity = 500
+       elseif cmdName == "moonjump" and hum then
+           hum.UseJumpPower = true
+           hum.JumpPower = 150
+       elseif cmdName == "superjump" and hum then
+           hum.UseJumpPower = true
+           hum.JumpPower = 250
+       elseif cmdName == "teleporttool" then
+           local tool = Instance.new("Tool")
+           tool.Name = "Teleport Tool"
+           tool.RequiresHandle = false
+           tool.Activated:Connect(function()
+               local pos = UserInputService:GetMouseLocation()
+               local ray = Camera:ViewportPointToRay(pos.X, pos.Y)
+               local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
+               if raycastResult and char then
+                   char:MoveTo(raycastResult.Position)
+               end
+           end)
+           tool.Parent = LocalPlayer.Backpack
+       elseif cmdName == "view" then
+           local targets = getTargetPlayer(args[1])
+           if targets[1] and targets[1].Character then
+               Camera.CameraSubject = targets[1].Character:FindFirstChildOfClass("Humanoid")
+           end
+       elseif cmdName == "unview" and hum then
+           Camera.CameraSubject = hum
+       elseif cmdName == "headless" and char then
+           local head = char:FindFirstChild("Head")
+           if head then head.Transparency = 1 end
+           local face = head and head:FindFirstChildOfClass("Decal")
+           if face then face:Destroy() end
+       elseif cmdName == "blockhead" and char then
+           local head = char:FindFirstChild("Head")
+           local mesh = head and head:FindFirstChildOfClass("SpecialMesh")
+           if mesh then mesh:Destroy() end
+       elseif cmdName == "setrighthandsize" and char then
+           local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+           local scaleVal = tonumber(args[1]) or 2
+           if hand and hand:IsA("BasePart") then
+               hand.Size = hand.Size * scaleVal
+           end
+       elseif cmdName == "setlefthandsize" and char then
+           local hand = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
+           local scaleVal = tonumber(args[1]) or 2
+           if hand and hand:IsA("BasePart") then
+               hand.Size = hand.Size * scaleVal
+           end
+       elseif cmdName == "infyield" then
+           loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+       elseif cmdName == "loaddex" then
+           loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
+       elseif cmdName == "loadspy" then
+           loadstring(game:HttpGet("https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua"))()
+       else
+           InfoText.Text = "Lệnh đã chạy thành công: " .. cmdName
+       end
+   end)
+   if not success then
+       InfoText.TextColor3 = Color3.fromRGB(255, 75, 75)
+       InfoText.Text = "Lỗi lệnh [" .. cmdName .. "]: " .. tostring(err)
+   end
 end)
 end
 
@@ -2598,24 +2611,24 @@ end
 local function handleChatted(msg)
 local raw = msg:lower()
 if raw:sub(1, 9) == "/e fling " then
-    local targetName = msg:sub(10)
-    local targets = getTargetPlayer(targetName)
-    if #targets > 0 then
-        task.spawn(function()
-            SkidFling(targets[1])
-        end)
-    end
+   local targetName = msg:sub(10)
+   local targets = getTargetPlayer(targetName)
+   if #targets > 0 then
+       task.spawn(function()
+           SkidFling(targets[1])
+       end)
+   end
 elseif raw == "/e flingall" then
-    task.spawn(function()
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then
-                SkidFling(p)
-                task.wait(0.2)
-            end
-        end
-    end)
+   task.spawn(function()
+       for _, p in ipairs(Players:GetPlayers()) do
+           if p ~= LocalPlayer then
+               SkidFling(p)
+               task.wait(0.2)
+           end
+       end
+   end)
 elseif raw == "/e unfling" or raw == "/e stopfling" then
-    getgenv().FlingActive = false
+   getgenv().FlingActive = false
 end
 end
 
@@ -2626,41 +2639,41 @@ local function executeCommand(inputStr)
 if inputStr == "" then return end
 local parts = {}
 for word in inputStr:gmatch("%S+") do
-    table.insert(parts, word)
+   table.insert(parts, word)
 end
 
 local cmdName = table.remove(parts, 1):lower()
 local cmd = commands[cmdName]
 
 if cmd then
-    local success, err = pcall(function()
-        cmd.handler(parts)
-    end)
-    if success then
-        InfoText.TextColor3 = Color3.fromRGB(0, 255, 120)
-        InfoText.Text = "Lệnh [" .. cmdName .. "] thực thi thành công."
-    else
-        InfoText.TextColor3 = Color3.fromRGB(255, 75, 75)
-        InfoText.Text = "Lỗi lệnh: " .. tostring(err)
-    end
+   local success, err = pcall(function()
+       cmd.handler(parts)
+   end)
+   if success then
+       InfoText.TextColor3 = Color3.fromRGB(0, 255, 120)
+       InfoText.Text = "Lệnh [" .. cmdName .. "] thực thi thành công."
+   else
+       InfoText.TextColor3 = Color3.fromRGB(255, 75, 75)
+       InfoText.Text = "Lỗi lệnh: " .. tostring(err)
+   end
 else
-    if cmdName == "help" then
-        InfoText.TextColor3 = Color3.fromRGB(255, 255, 255)
-        InfoText.Text = "Danh sách lệnh đã hiển thị ở cuộn bên dưới."
-    else
-        InfoText.TextColor3 = Color3.fromRGB(255, 150, 0)
-        InfoText.Text = "Không tìm thấy lệnh '" .. cmdName .. "'. Thử gõ 'help'"
-    end
+   if cmdName == "help" then
+       InfoText.TextColor3 = Color3.fromRGB(255, 255, 255)
+       InfoText.Text = "Danh sách lệnh đã hiển thị ở cuộn bên dưới."
+   else
+       InfoText.TextColor3 = Color3.fromRGB(255, 150, 0)
+       InfoText.Text = "Không tìm thấy lệnh '" .. cmdName .. "'. Thử gõ 'help'"
+   end
 end
 end
 
 -- Box Focus Lost Execution
 ConsoleInput.FocusLost:Connect(function(enterPressed)
 if enterPressed then
-    local text = ConsoleInput.Text
-    executeCommand(text)
-    ConsoleInput.Text = ""
-    SuggestionLabel.Text = ""
+   local text = ConsoleInput.Text
+   executeCommand(text)
+   ConsoleInput.Text = ""
+   SuggestionLabel.Text = ""
 end
 end)
 
@@ -2672,70 +2685,70 @@ task.spawn(function()
 task.wait(0.5)
 
 if MainFrame and LeftColumn and RightColumn then
-    local isSettingsVisible = false
-    local originalLeftSize = UDim2.new(0.5, -20, 1, -110)
-    local originalLeftPos = UDim2.new(0, 15, 0, 55)
-    local originalRightSize = RightColumn.Size
+   local isSettingsVisible = false
+   local originalLeftSize = UDim2.new(0.5, -20, 1, -110)
+   local originalLeftPos = UDim2.new(0, 15, 0, 55)
+   local originalRightSize = RightColumn.Size
 
-    RightColumn.Visible = false
-    RightColumn.Size = UDim2.new(0, 0, originalRightSize.Y.Scale, originalRightSize.Y.Offset)
-    LeftColumn.Size = UDim2.new(1, -30, 1, -110)
-    LeftColumn.Position = UDim2.new(0, 15, 0, 55)
+   RightColumn.Visible = false
+   RightColumn.Size = UDim2.new(0, 0, originalRightSize.Y.Scale, originalRightSize.Y.Offset)
+   LeftColumn.Size = UDim2.new(1, -30, 1, -110)
+   LeftColumn.Position = UDim2.new(0, 15, 0, 55)
 
-    local ToggleSettingsBtn = Instance.new("TextButton")
-    ToggleSettingsBtn.Name = "ToggleSettingsBtn"
-    ToggleSettingsBtn.Parent = MainFrame
-    ToggleSettingsBtn.Size = UDim2.new(0, 35, 0, 35)
-    ToggleSettingsBtn.Position = UDim2.new(1, -85, 0, 5)
-    ToggleSettingsBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    ToggleSettingsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleSettingsBtn.Text = "⚙️"
-    ToggleSettingsBtn.TextSize = 16
-    ToggleSettingsBtn.Font = Enum.Font.GothamBold
-    ToggleSettingsBtn.ZIndex = 3
+   local ToggleSettingsBtn = Instance.new("TextButton")
+   ToggleSettingsBtn.Name = "ToggleSettingsBtn"
+   ToggleSettingsBtn.Parent = MainFrame
+   ToggleSettingsBtn.Size = UDim2.new(0, 35, 0, 35)
+   ToggleSettingsBtn.Position = UDim2.new(1, -85, 0, 5)
+   ToggleSettingsBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+   ToggleSettingsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+   ToggleSettingsBtn.Text = "⚙️"
+   ToggleSettingsBtn.TextSize = 16
+   ToggleSettingsBtn.Font = Enum.Font.GothamBold
+   ToggleSettingsBtn.ZIndex = 3
 
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 8)
-    BtnCorner.Parent = ToggleSettingsBtn
+   local BtnCorner = Instance.new("UICorner")
+   BtnCorner.CornerRadius = UDim.new(0, 8)
+   BtnCorner.Parent = ToggleSettingsBtn
 
-    ToggleSettingsBtn.MouseButton1Click:Connect(function()
-        local isSettingsCurrentlyVisible = isSettingsVisible
-        isSettingsVisible = not isSettingsCurrentlyVisible
-        local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+   ToggleSettingsBtn.MouseButton1Click:Connect(function()
+       local isSettingsCurrentlyVisible = isSettingsVisible
+       isSettingsVisible = not isSettingsCurrentlyVisible
+       local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
-        if isSettingsVisible then
-            ToggleSettingsBtn.Text = "❌"
-            TweenService:Create(ToggleSettingsBtn, tweenInfo, {TextColor3 = Color3.fromRGB(255, 75, 75)}):Play()
-            TweenService:Create(LeftColumn, tweenInfo, {Size = originalLeftSize, Position = originalLeftPos}):Play()
-            task.wait(0.1)
-            RightColumn.Visible = true
-            TweenService:Create(RightColumn, tweenInfo, {Size = originalRightSize}):Play()
-        else
-            ToggleSettingsBtn.Text = "⚙️"
-            TweenService:Create(ToggleSettingsBtn, tweenInfo, {TextColor3 = getgenv().ThemeColor}):Play()
+       if isSettingsVisible then
+           ToggleSettingsBtn.Text = "❌"
+           TweenService:Create(ToggleSettingsBtn, tweenInfo, {TextColor3 = Color3.fromRGB(255, 75, 75)}):Play()
+           TweenService:Create(LeftColumn, tweenInfo, {Size = originalLeftSize, Position = originalLeftPos}):Play()
+           task.wait(0.1)
+           RightColumn.Visible = true
+           TweenService:Create(RightColumn, tweenInfo, {Size = originalRightSize}):Play()
+       else
+           ToggleSettingsBtn.Text = "⚙️"
+           TweenService:Create(ToggleSettingsBtn, tweenInfo, {TextColor3 = getgenv().ThemeColor}):Play()
 
-            local targetRightSize = UDim2.new(0, 0, originalRightSize.Y.Scale, originalRightSize.Y.Offset)
-            local tweenRight = TweenService:Create(RightColumn, tweenInfo, {Size = targetRightSize})
-            tweenRight:Play()
+           local targetRightSize = UDim2.new(0, 0, originalRightSize.Y.Scale, originalRightSize.Y.Offset)
+           local tweenRight = TweenService:Create(RightColumn, tweenInfo, {Size = targetRightSize})
+           tweenRight:Play()
 
-            tweenRight.Completed:Connect(function()
-                if not isSettingsVisible then RightColumn.Visible = false end
-            end)
+           tweenRight.Completed:Connect(function()
+               if not isSettingsVisible then RightColumn.Visible = false end
+           end)
 
-            TweenService:Create(LeftColumn, tweenInfo, {Size = UDim2.new(1, -30, 1, -110)}):Play()
-        end
-    end)
+           TweenService:Create(LeftColumn, tweenInfo, {Size = UDim2.new(1, -30, 1, -110)}):Play()
+       end
+   end)
 end
 end)
 
 -- ==================== FREECAM COMMAND ====================
 addCommand({"freecam", "fc"}, "Bật FreeCam với Joystick điều khiển", function()
 if Camera.CameraType == Enum.CameraType.Scriptable then
-    Camera.CameraType = Enum.CameraType.Custom
-    local j = PureAdminGUI:FindFirstChild("FreeCamJoystick")
-    if j then j:Destroy() end
-    notify("FreeCam", "Đã tắt FreeCam", 2)
-    return
+   Camera.CameraType = Enum.CameraType.Custom
+   local j = PureAdminGUI:FindFirstChild("FreeCamJoystick")
+   if j then j:Destroy() end
+   notify("FreeCam", "Đã tắt FreeCam", 2)
+   return
 end
 
 Camera.CameraType = Enum.CameraType.Scriptable
@@ -2754,22 +2767,22 @@ Circle.Parent = Joystick
 
 local moveVec = Vector3.new(0, 0, 0)
 Joystick.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        local pos = input.Position
-        local center = Joystick.AbsolutePosition + Joystick.AbsoluteSize/2
-        local delta = (Vector2.new(pos.X, pos.Y) - center) / 75
-        moveVec = Vector3.new(delta.X, 0, delta.Y)
-    end
+   if input.UserInputType == Enum.UserInputType.Touch then
+       local pos = input.Position
+       local center = Joystick.AbsolutePosition + Joystick.AbsoluteSize/2
+       local delta = (Vector2.new(pos.X, pos.Y) - center) / 75
+       moveVec = Vector3.new(delta.X, 0, delta.Y)
+   end
 end)
 
 local renderConnection
 renderConnection = RunService.RenderStepped:Connect(function()
-    if Camera.CameraType == Enum.CameraType.Scriptable and Joystick.Parent then
-        camPos = camPos + (Camera.CFrame.LookVector * -moveVec.Z) + (Camera.CFrame.RightVector * moveVec.X)
-        Camera.CFrame = CFrame.new(camPos, camPos + Camera.CFrame.LookVector)
-    else
-        renderConnection:Disconnect()
-    end
+   if Camera.CameraType == Enum.CameraType.Scriptable and Joystick.Parent then
+       camPos = camPos + (Camera.CFrame.LookVector * -moveVec.Z) + (Camera.CFrame.RightVector * moveVec.X)
+       Camera.CFrame = CFrame.new(camPos, camPos + Camera.CFrame.LookVector)
+   else
+       renderConnection:Disconnect()
+   end
 end)
 notify("FreeCam", "Đã bật! Dùng Joystick bên trái để bay.", 3)
 end)
@@ -2790,27 +2803,27 @@ FpsLabel.Parent = FpsGui
 
 local fpsConnection
 fpsConnection = RunService.RenderStepped:Connect(function()
-    if FpsGui.Parent then
-        local fps = math.floor(1 / RunService.RenderStepped:Wait())
-        FpsLabel.Text = "FPS: " .. fps
-    else
-        fpsConnection:Disconnect()
-    end
+   if FpsGui.Parent then
+       local fps = math.floor(1 / RunService.RenderStepped:Wait())
+       FpsLabel.Text = "FPS: " .. fps
+   else
+       fpsConnection:Disconnect()
+   end
 end)
 
 notify("Fix Lag", "Đang chuyển sang chế độ Khoai Tây...", 2)
 pcall(function()
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.Material = Enum.Material.Plastic
-            v.Reflectance = 0
-            if v:IsA("MeshPart") then v.TextureID = "" end
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") then
-            v.Enabled = false
-        end
-    end
-    game:GetService("Lighting").GlobalShadows = false
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+   for _, v in pairs(workspace:GetDescendants()) do
+       if v:IsA("BasePart") then
+           v.Material = Enum.Material.Plastic
+           v.Reflectance = 0
+           if v:IsA("MeshPart") then v.TextureID = "" end
+       elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") then
+           v.Enabled = false
+       end
+   end
+   game:GetService("Lighting").GlobalShadows = false
+   settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 end)
 notify("Fix Lag", "Đã bật chế độ Khoai Tây!", 3)
 end)
@@ -2819,24 +2832,24 @@ end)
 addCommand({"nofog"}, "Xóa sương mù vĩnh viễn", function()
 notify("System", "NoFog đã BẬT!", 2)
 task.spawn(function()
-    while true do
-        game:GetService("Lighting").FogEnd = 9e9
-        task.wait(1)
-    end
+   while true do
+       game:GetService("Lighting").FogEnd = 9e9
+       task.wait(1)
+   end
 end)
 end)
 
 addCommand({"fullbright", "fb"}, "Bật sáng màn hình vĩnh viễn", function()
 notify("System", "Fullbright đã BẬT!", 2)
 task.spawn(function()
-    while true do
-        local L = game:GetService("Lighting")
-        L.Brightness = 2
-        L.ClockTime = 12
-        L.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-        L.GlobalShadows = false
-        task.wait(1)
-    end
+   while true do
+       local L = game:GetService("Lighting")
+       L.Brightness = 2
+       L.ClockTime = 12
+       L.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+       L.GlobalShadows = false
+       task.wait(1)
+   end
 end)
 end)
 
@@ -2844,36 +2857,36 @@ end)
 local function toggleEspTeam(state)
 espTeamActive = state
 if espTeamActive then
-    notify("ESP Team", "Đã bật ESP Đội!", 3)
-    task.spawn(function()
-        while espTeamActive do
-            task.wait(1)
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character then
-                    local highlight = player.Character:FindFirstChild("TeamESPHighlight")
-                    if not highlight then
-                        highlight = Instance.new("Highlight")
-                        highlight.Name = "TeamESPHighlight"
-                        highlight.FillTransparency = 0.5
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        highlight.Parent = player.Character
-                    end
-                    if player.Team then
-                        highlight.FillColor = player.TeamColor.Color
-                    else
-                        highlight.FillColor = Color3.fromRGB(150, 150, 150)
-                    end
-                end
-            end
-        end
-    end)
+   notify("ESP Team", "Đã bật ESP Đội!", 3)
+   task.spawn(function()
+       while espTeamActive do
+           task.wait(1)
+           for _, player in ipairs(Players:GetPlayers()) do
+               if player ~= LocalPlayer and player.Character then
+                   local highlight = player.Character:FindFirstChild("TeamESPHighlight")
+                   if not highlight then
+                       highlight = Instance.new("Highlight")
+                       highlight.Name = "TeamESPHighlight"
+                       highlight.FillTransparency = 0.5
+                       highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                       highlight.Parent = player.Character
+                   end
+                   if player.Team then
+                       highlight.FillColor = player.TeamColor.Color
+                   else
+                       highlight.FillColor = Color3.fromRGB(150, 150, 150)
+                   end
+               end
+           end
+       end
+   end)
 else
-    notify("ESP Team", "Đã tắt ESP Đội!", 3)
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character and player.Character:FindFirstChild("TeamESPHighlight") then
-            player.Character.TeamESPHighlight:Destroy()
-        end
-    end
+   notify("ESP Team", "Đã tắt ESP Đội!", 3)
+   for _, player in ipairs(Players:GetPlayers()) do
+       if player.Character and player.Character:FindFirstChild("TeamESPHighlight") then
+           player.Character.TeamESPHighlight:Destroy()
+       end
+   end
 end
 end
 
@@ -2886,248 +2899,248 @@ end)
 
 -- 1. Anti-AFK Treo Máy Chuyên Nghiệp
 addCommand({"antiidle", "afk"}, "Chống bị ngắt kết nối khi treo máy AFK", function()
-   local vu = game:GetService("VirtualUser")
-   LocalPlayer.Idled:Connect(function()
-       vu:CaptureController()
-       vu:ClickButton2(Vector2.new(0, 0))
-   end)
-   notify("System AFK", "Đã kích hoạt chế độ chống treo máy thành công!", 3)
+  local vu = game:GetService("VirtualUser")
+  LocalPlayer.Idled:Connect(function()
+      vu:CaptureController()
+      vu:ClickButton2(Vector2.new(0, 0))
+  end)
+  notify("System AFK", "Đã kích hoạt chế độ chống treo máy thành công!", 3)
 end)
 
 -- 2. Tầm Đánh Rộng Cho Kiếm / Công Cụ (Reach)
 local reachActive = false
 addCommand({"reach"}, "Tăng tầm đánh xa cho công cụ cầm tay (reach 15)", function(args)
-   local size = tonumber(args[1]) or 15
-   reachActive = true
-   task.spawn(function()
-       while reachActive do
-           task.wait(0.5)
-           local char = LocalPlayer.Character
-           local tool = char and char:FindFirstChildOfClass("Tool")
-           if tool then
-               local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("BasePart")
-               if handle then
-                   handle.Size = Vector3.new(size, size, size)
-                   handle.CanCollide = false
-               end
-           end
-       end
-   end)
-   notify("Weapons Reach", "Đã bật tầm rộng vũ khí: " .. size, 3)
+  local size = tonumber(args[1]) or 15
+  reachActive = true
+  task.spawn(function()
+      while reachActive do
+          task.wait(0.5)
+          local char = LocalPlayer.Character
+          local tool = char and char:FindFirstChildOfClass("Tool")
+          if tool then
+              local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("BasePart")
+              if handle then
+                  handle.Size = Vector3.new(size, size, size)
+                  handle.CanCollide = false
+              end
+          end
+      end
+  end)
+  notify("Weapons Reach", "Đã bật tầm rộng vũ khí: " .. size, 3)
 end)
 
 -- 3. Tắt Tầm Đánh Rộng (Unreach)
 addCommand({"unreach"}, "Khôi phục lại kích thước tầm đánh gốc", function()
-   reachActive = false
-   local char = LocalPlayer.Character
-   local tool = char and char:FindFirstChildOfClass("Tool")
-   if tool then
-       local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("BasePart")
-       if handle then
-           handle.Size = Vector3.new(1, 1, 1)
-       end
-   end
-   notify("Weapons Reach", "Đã tắt tầm đánh rộng vũ khí!", 3)
+  reachActive = false
+  local char = LocalPlayer.Character
+  local tool = char and char:FindFirstChildOfClass("Tool")
+  if tool then
+      local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("BasePart")
+      if handle then
+          handle.Size = Vector3.new(1, 1, 1)
+      end
+  end
+  notify("Weapons Reach", "Đã tắt tầm đánh rộng vũ khí!", 3)
 end)
 
 -- 4. Tạo Bục Đi Trên Không (Airwalk)
 local airPlatform = nil
 addCommand({"airwalk"}, "Tạo bục vô hình tự đi theo chân trên không", function()
-   local char = LocalPlayer.Character
-   local hrp = char and char:FindFirstChild("HumanoidRootPart")
-   if hrp then
-       if airPlatform then airPlatform:Destroy() end
-       airPlatform = Instance.new("Part")
-       airPlatform.Size = Vector3.new(10, 1, 10)
-       airPlatform.Anchored = true
-       airPlatform.CanCollide = true
-       airPlatform.Transparency = 0.5
-       airPlatform.Color = getgenv().ThemeColor
-       airPlatform.Parent = workspace
-       task.spawn(function()
-           while airPlatform and airPlatform.Parent do
-               task.wait()
-               if hrp and hrp.Parent then
-                   airPlatform.Position = hrp.Position + Vector3.new(0, -3, 0)
-               else
-                   break
-               end
-           end
-       end)
-       notify("Airwalk Mode", "Bục vô hình nâng bước chân đã BẬT!", 3)
-   end
+  local char = LocalPlayer.Character
+  local hrp = char and char:FindFirstChild("HumanoidRootPart")
+  if hrp then
+      if airPlatform then airPlatform:Destroy() end
+      airPlatform = Instance.new("Part")
+      airPlatform.Size = Vector3.new(10, 1, 10)
+      airPlatform.Anchored = true
+      airPlatform.CanCollide = true
+      airPlatform.Transparency = 0.5
+      airPlatform.Color = getgenv().ThemeColor
+      airPlatform.Parent = workspace
+      task.spawn(function()
+          while airPlatform and airPlatform.Parent do
+              task.wait()
+              if hrp and hrp.Parent then
+                  airPlatform.Position = hrp.Position + Vector3.new(0, -3, 0)
+              else
+                  break
+              end
+          end
+      end)
+      notify("Airwalk Mode", "Bục vô hình nâng bước chân đã BẬT!", 3)
+  end
 end)
 
 -- 5. Tắt Bục Vô Hình Đi Trên Không (Unairwalk)
 addCommand({"unairwalk"}, "Xóa bục vô hình nâng chân", function()
-   if airPlatform then
-       airPlatform:Destroy()
-       airPlatform = nil
-   end
-   notify("Airwalk Mode", "Bục nâng chân vô hình đã được xóa!", 3)
+  if airPlatform then
+      airPlatform:Destroy()
+      airPlatform = nil
+  end
+  notify("Airwalk Mode", "Bục nâng chân vô hình đã được xóa!", 3)
 end)
 
 -- 6. Hiện Tên Người Chơi Xuyên Tường (Name ESP)
 local nameEspActive = false
 addCommand({"espnames", "nameesp"}, "Hiển thị tên người chơi nổi trên đầu", function()
-   nameEspActive = true
-   task.spawn(function()
-       while nameEspActive do
-           task.wait(1)
-           for _, p in ipairs(Players:GetPlayers()) do
-               if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-                   local head = p.Character.Head
-                   local billboard = head:FindFirstChild("PureNameESP")
-                   if not billboard then
-                       billboard = Instance.new("BillboardGui")
-                       billboard.Name = "PureNameESP"
-                       billboard.Size = UDim2.new(0, 150, 0, 30)
-                       billboard.AlwaysOnTop = true
-                       billboard.StudsOffset = Vector3.new(0, 2, 0)
-                       billboard.Parent = head
+  nameEspActive = true
+  task.spawn(function()
+      while nameEspActive do
+          task.wait(1)
+          for _, p in ipairs(Players:GetPlayers()) do
+              if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+                  local head = p.Character.Head
+                  local billboard = head:FindFirstChild("PureNameESP")
+                  if not billboard then
+                      billboard = Instance.new("BillboardGui")
+                      billboard.Name = "PureNameESP"
+                      billboard.Size = UDim2.new(0, 150, 0, 30)
+                      billboard.AlwaysOnTop = true
+                      billboard.StudsOffset = Vector3.new(0, 2, 0)
+                      billboard.Parent = head
 
-                       local label = Instance.new("TextLabel")
-                       label.Size = UDim2.new(1, 0, 1, 0)
-                       label.BackgroundTransparency = 1
-                       label.TextColor3 = getgenv().ThemeColor
-                       label.TextStrokeTransparency = 0.2
-                       label.Font = Enum.Font.GothamBold
-                       label.TextSize = 11
-                       label.Text = p.DisplayName or p.Name
-                       label.Parent = billboard
-                   end
-               end
-           end
-       end
-   end)
-   notify("ESP Names", "Định vị tên trên đầu đã BẬT!", 3)
+                      local label = Instance.new("TextLabel")
+                      label.Size = UDim2.new(1, 0, 1, 0)
+                      label.BackgroundTransparency = 1
+                      label.TextColor3 = getgenv().ThemeColor
+                      label.TextStrokeTransparency = 0.2
+                      label.Font = Enum.Font.GothamBold
+                      label.TextSize = 11
+                      label.Text = p.DisplayName or p.Name
+                      label.Parent = billboard
+                  end
+              end
+          end
+      end
+  end)
+  notify("ESP Names", "Định vị tên trên đầu đã BẬT!", 3)
 end)
 
 -- 7. Tắt Hiện Tên Trên Đầu (Unespnames)
 addCommand({"unespnames"}, "Tắt định vị hiển thị tên", function()
-   nameEspActive = false
-   for _, p in ipairs(Players:GetPlayers()) do
-       if p.Character and p.Character:FindFirstChild("Head") then
-           local nameESP = p.Character.Head:FindFirstChild("PureNameESP")
-           if nameESP then nameESP:Destroy() end
-       end
-   end
-   notify("ESP Names", "Định vị tên trên đầu đã tắt!", 3)
+  nameEspActive = false
+  for _, p in ipairs(Players:GetPlayers()) do
+      if p.Character and p.Character:FindFirstChild("Head") then
+          local nameESP = p.Character.Head:FindFirstChild("PureNameESP")
+          if nameESP then nameESP:Destroy() end
+      end
+  end
+  notify("ESP Names", "Định vị tên trên đầu đã tắt!", 3)
 end)
 
 -- 8. Quan Sát Người Chơi Ngẫu Nhiên (View Random)
 addCommand({"viewrandom"}, "Theo dõi góc nhìn camera một người chơi ngẫu nhiên", function()
-   local playersList = Players:GetPlayers()
-   if #playersList > 1 then
-       local randomPlayer = playersList[math.random(1, #playersList)]
-       while randomPlayer == LocalPlayer do
-           randomPlayer = playersList[math.random(1, #playersList)]
-       end
-       if randomPlayer and randomPlayer.Character then
-           Camera.CameraSubject = randomPlayer.Character:FindFirstChildOfClass("Humanoid")
-           notify("Spectate View", "Đang xem: " .. randomPlayer.DisplayName, 3)
-       end
-   else
-       notify("Spectate View", "Không có người chơi khác để theo dõi!", 3)
-   end
+  local playersList = Players:GetPlayers()
+  if #playersList > 1 then
+      local randomPlayer = playersList[math.random(1, #playersList)]
+      while randomPlayer == LocalPlayer do
+          randomPlayer = playersList[math.random(1, #playersList)]
+      end
+      if randomPlayer and randomPlayer.Character then
+          Camera.CameraSubject = randomPlayer.Character:FindFirstChildOfClass("Humanoid")
+          notify("Spectate View", "Đang xem: " .. randomPlayer.DisplayName, 3)
+      end
+  else
+      notify("Spectate View", "Không có người chơi khác để theo dõi!", 3)
+  end
 end)
 
 -- 9. Chỉnh Ban Ngày Client (Day)
 addCommand({"day"}, "Thay đổi ánh sáng bầu trời ban ngày", function()
-   game:GetService("Lighting").ClockTime = 14
-   notify("Lighting Mod", "Đã chỉnh thành Ban Ngày!", 2)
+  game:GetService("Lighting").ClockTime = 14
+  notify("Lighting Mod", "Đã chỉnh thành Ban Ngày!", 2)
 end)
 
 -- 10. Chỉnh Ban Đêm Client (Night)
 addCommand({"night"}, "Thay đổi bầu trời đêm sẫm màu", function()
-   game:GetService("Lighting").ClockTime = 0
-   notify("Lighting Mod", "Đã chỉnh thành Ban Đêm!", 2)
+  game:GetService("Lighting").ClockTime = 0
+  notify("Lighting Mod", "Đã chỉnh thành Ban Đêm!", 2)
 end)
 
 -- 11. Phát Toàn Bộ Âm Thanh Trong Game (Spam sound)
 addCommand({"spamsound"}, "Kích hoạt phát tất cả tệp âm thanh có trong map cùng lúc", function()
-   local count = 0
-   for _, sound in ipairs(workspace:GetDescendants()) do
-       if sound:IsA("Sound") then
-           sound:Play()
-           count = count + 1
-       end
-   end
-   notify("Sound Boom", "Đã kích phát " .. count .. " tệp âm thanh!", 3)
+  local count = 0
+  for _, sound in ipairs(workspace:GetDescendants()) do
+      if sound:IsA("Sound") then
+          sound:Play()
+          count = count + 1
+      end
+  end
+  notify("Sound Boom", "Đã kích phát " .. count .. " tệp âm thanh!", 3)
 end)
 
 -- 12. Sao Chép ID Place Đang Chơi (Copy script / Place ID)
 addCommand({"copyscript", "copyplaceid"}, "Sao chép mã game ID hiện tại vào bộ nhớ tạm", function()
-   local success, _ = pcall(function()
-       setclipboard(tostring(game.PlaceId))
-   end)
-   if success then
-       notify("System Clipboard", "Đã sao chép Place ID thành công!", 3)
-   else
-       notify("System Clipboard", "Công cụ thực thi (Executor) của bạn không hỗ trợ setclipboard!", 3)
-   end
+  local success, _ = pcall(function()
+      setclipboard(tostring(game.PlaceId))
+  end)
+  if success then
+      notify("System Clipboard", "Đã sao chép Place ID thành công!", 3)
+  else
+      notify("System Clipboard", "Công cụ thực thi (Executor) của bạn không hỗ trợ setclipboard!", 3)
+  end
 end)
 
 -- 13. Công Cụ Click Tiêu Diệt (Click kill)
 addCommand({"clickkill"}, "Cấp búa diệt người chơi bằng cách nhấp chuột", function()
-   local tool = Instance.new("Tool")
-   tool.Name = "Click Kill Tool"
-   tool.RequiresHandle = false
-   tool.Activated:Connect(function()
-       local mouse = LocalPlayer:GetMouse()
-       local target = mouse.Target
-       if target and target.Parent then
-           local targetPlayer = Players:GetPlayerFromCharacter(target.Parent)
-           if targetPlayer then
-               SkidFling(targetPlayer)
-           end
-       end
-   end)
-   tool.Parent = LocalPlayer.Backpack
-   notify("Click Kill", "Đã cấp công cụ nhấp chuột để Fling mục tiêu!", 3)
+  local tool = Instance.new("Tool")
+  tool.Name = "Click Kill Tool"
+  tool.RequiresHandle = false
+  tool.Activated:Connect(function()
+      local mouse = LocalPlayer:GetMouse()
+      local target = mouse.Target
+      if target and target.Parent then
+          local targetPlayer = Players:GetPlayerFromCharacter(target.Parent)
+          if targetPlayer then
+              SkidFling(targetPlayer)
+          end
+      end
+  end)
+  tool.Parent = LocalPlayer.Backpack
+  notify("Click Kill", "Đã cấp công cụ nhấp chuột để Fling mục tiêu!", 3)
 end)
 
 -- 14. Công Cụ Click Tạo Lửa (Click fire)
 addCommand({"clickfire"}, "Cấp công cụ click tạo hiệu ứng bốc hỏa client-side", function()
-   local tool = Instance.new("Tool")
-   tool.Name = "Click Fire Tool"
-   tool.RequiresHandle = false
-   tool.Activated:Connect(function()
-       local mouse = LocalPlayer:GetMouse()
-       local target = mouse.Target
-       if target and target:IsA("BasePart") then
-           local fire = Instance.new("Fire")
-           fire.Parent = target
-       end
-   end)
-   tool.Parent = LocalPlayer.Backpack
-   notify("Click Fire", "Đã cấp công cụ bốc hỏa vật thể!", 3)
+  local tool = Instance.new("Tool")
+  tool.Name = "Click Fire Tool"
+  tool.RequiresHandle = false
+  tool.Activated:Connect(function()
+      local mouse = LocalPlayer:GetMouse()
+      local target = mouse.Target
+      if target and target:IsA("BasePart") then
+          local fire = Instance.new("Fire")
+          fire.Parent = target
+      end
+  end)
+  tool.Parent = LocalPlayer.Backpack
+  notify("Click Fire", "Đã cấp công cụ bốc hỏa vật thể!", 3)
 end)
 
 -- 15. Tự Động Khóa Camera Vào Đối Thủ (Cam lock)
 local camLockActive = false
 local camLockConn = nil
 addCommand({"camlock"}, "Tự động hướng góc camera vào đối thủ gần bạn nhất", function()
-   camLockActive = true
-   camLockConn = RunService.RenderStepped:Connect(function()
-       if camLockActive then
-           local target = getClosestPlayerToCursor()
-           if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-               Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position)
-           end
-       end
-   end)
-   notify("Camera System", "Tự động khóa hướng camera đã BẬT!", 3)
+  camLockActive = true
+  camLockConn = RunService.RenderStepped:Connect(function()
+      if camLockActive then
+          local target = getClosestPlayerToCursor()
+          if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+              Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position)
+          end
+      end
+  end)
+  notify("Camera System", "Tự động khóa hướng camera đã BẬT!", 3)
 end)
 
 -- 16. Tắt Khóa Hướng Camera (Uncamlock)
 addCommand({"uncamlock"}, "Hủy bỏ tự động khóa camera", function()
-   camLockActive = false
-   if camLockConn then
-       camLockConn:Disconnect()
-       camLockConn = nil
-   end
-   notify("Camera System", "Đã tắt khóa hướng camera!", 3)
+  camLockActive = false
+  if camLockConn then
+      camLockConn:Disconnect()
+      camLockConn = nil
+  end
+  notify("Camera System", "Đã tắt khóa hướng camera!", 3)
 end)
 
 -- 17. Chế Độ Bay Xe Ô Tô Đang Lái (Fly car)
@@ -3135,72 +3148,72 @@ local carFlyActive = false
 local carFlySpeed = 50
 local carFlyConn = nil
 addCommand({"flycar"}, "Bay lơ lửng phương tiện bạn đang trực tiếp lái (flycar 80)", function(args)
-   carFlyActive = true
-   carFlySpeed = tonumber(args[1]) or 50
-   notify("Car Flight", "Đã kích hoạt chế độ bay xe tốc độ: " .. carFlySpeed, 3)
-   carFlyConn = RunService.Heartbeat:Connect(function()
-       if carFlyActive then
-           local char = LocalPlayer.Character
-           local hum = char and char:FindFirstChildOfClass("Humanoid")
-           if hum and hum.SeatPart then
-               local vehicle = hum.SeatPart.Parent
-               local primary = vehicle:IsA("Model") and vehicle.PrimaryPart or hum.SeatPart
-               if primary then
-                   primary.AssemblyLinearVelocity = Camera.CFrame.LookVector * carFlySpeed
-               end
-           end
-       end
-   end)
+  carFlyActive = true
+  carFlySpeed = tonumber(args[1]) or 50
+  notify("Car Flight", "Đã kích hoạt chế độ bay xe tốc độ: " .. carFlySpeed, 3)
+  carFlyConn = RunService.Heartbeat:Connect(function()
+      if carFlyActive then
+          local char = LocalPlayer.Character
+          local hum = char and char:FindFirstChildOfClass("Humanoid")
+          if hum and hum.SeatPart then
+              local vehicle = hum.SeatPart.Parent
+              local primary = vehicle:IsA("Model") and vehicle.PrimaryPart or hum.SeatPart
+              if primary then
+                  primary.AssemblyLinearVelocity = Camera.CFrame.LookVector * carFlySpeed
+              end
+          end
+      end
+  end)
 end)
 
 -- 18. Tắt Chế Độ Bay Xe Ô Tô (Unflycar)
 addCommand({"unflycar"}, "Tắt chế độ điều khiển bay xe", function()
-   carFlyActive = false
-   if carFlyConn then
-       carFlyConn:Disconnect()
-       carFlyConn = nil
-   end
-   notify("Car Flight", "Đã tắt chế độ bay xe!", 3)
+  carFlyActive = false
+  if carFlyConn then
+      carFlyConn:Disconnect()
+      carFlyConn = nil
+  end
+  notify("Car Flight", "Đã tắt chế độ bay xe!", 3)
 end)
 
 -- 19. Cho Xe Đi Xuyên Tường (Noclip car)
 local noclipCarActive = false
 addCommand({"noclipcar"}, "Cho phép phương tiện bạn lái đi xuyên địa hình", function()
-   noclipCarActive = true
-   notify("Car Noclip", "Xuyên tường cho phương tiện đang lái đã BẬT!", 3)
-   task.spawn(function()
-       while noclipCarActive do
-           task.wait()
-           local char = LocalPlayer.Character
-           local hum = char and char:FindFirstChildOfClass("Humanoid")
-           if hum and hum.SeatPart then
-               local vehicle = hum.SeatPart.Parent
-               for _, p in ipairs(vehicle:GetDescendants()) do
-                   if p:IsA("BasePart") then p.CanCollide = false end
-               end
-           end
-       end
-   end)
+  noclipCarActive = true
+  notify("Car Noclip", "Xuyên tường cho phương tiện đang lái đã BẬT!", 3)
+  task.spawn(function()
+      while noclipCarActive do
+          task.wait()
+          local char = LocalPlayer.Character
+          local hum = char and char:FindFirstChildOfClass("Humanoid")
+          if hum and hum.SeatPart then
+              local vehicle = hum.SeatPart.Parent
+              for _, p in ipairs(vehicle:GetDescendants()) do
+                  if p:IsA("BasePart") then p.CanCollide = false end
+              end
+          end
+      end
+  end)
 end)
 
 -- 20. Tắt Xe Xuyên Tường (Unnoclipcar)
 addCommand({"unnoclipcar", "clipcar"}, "Khôi phục va chạm bình thường cho xe", function()
-   noclipCarActive = false
-   notify("Car Noclip", "Xuyên tường xe đã tắt!", 3)
+  noclipCarActive = false
+  notify("Car Noclip", "Xuyên tường xe đã tắt!", 3)
 end)
 
 -- 21. AimBot dạng Lệnh
 addCommand({"aimbot", "ab"}, "Bật / Tắt tự động ngắm mục tiêu (ví dụ: aimbot on / off)", function(args)
 local state = args[1] and args[1]:lower()
 if state == "on" or state == "bat" then
-    setAimbotState(true)
-    notify("Aimbot", "Đã bật aimbot qua lệnh!", 3)
+   setAimbotState(true)
+   notify("Aimbot", "Đã bật aimbot qua lệnh!", 3)
 elseif state == "off" or state == "tat" then
-    setAimbotState(false)
-    notify("Aimbot", "Đã tắt aimbot qua lệnh!", 3)
+   setAimbotState(false)
+   notify("Aimbot", "Đã tắt aimbot qua lệnh!", 3)
 else
-    setAimbotState(not aimbotEnabled)
-    notify("Aimbot", "Đã đảo trạng thái aimbot qua lệnh!", 3)
+   setAimbotState(not aimbotEnabled)
+   notify("Aimbot", "Đã đảo trạng thái aimbot qua lệnh!", 3)
 end
 end)
 
@@ -3210,13 +3223,13 @@ addCommand({"autoclick", "clicker"}, "Tự động nhấp chuột cực nhanh li
 autoClickActive = not autoClickActive
 notify("Auto Clicker", autoClickActive and "Auto click đã BẬT!" or "Auto click đã TẤT!", 3)
 task.spawn(function()
-    local VirtualInputManager = game:GetService("VirtualInputManager")
-    while autoClickActive do
-        local mousePos = UserInputService:GetMouseLocation()
-        VirtualInputManager:SendMouseButtonEvent(mousePos.X, mousePos.Y, 0, true, game, 1)
-        VirtualInputManager:SendMouseButtonEvent(mousePos.X, mousePos.Y, 0, false, game, 1)
-        task.wait(0.01)
-    end
+   local VirtualInputManager = game:GetService("VirtualInputManager")
+   while autoClickActive do
+       local mousePos = UserInputService:GetMouseLocation()
+       VirtualInputManager:SendMouseButtonEvent(mousePos.X, mousePos.Y, 0, true, game, 1)
+       VirtualInputManager:SendMouseButtonEvent(mousePos.X, mousePos.Y, 0, false, game, 1)
+       task.wait(0.01)
+   end
 end)
 end)
 
@@ -3232,18 +3245,18 @@ addCommand({"magnet", "automagnet"}, "Tự động hút tất cả vật thể u
 magnetActive = not magnetActive
 notify("Item Magnet", magnetActive and "Đã kích hoạt hút vật thể!" or "Đã tắt hút vật thể!", 3)
 task.spawn(function()
-    while magnetActive do
-        task.wait(0.5)
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            for _, v in ipairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") and not v.Anchored and not v:IsDescendantOf(char) and v.Name == "Handle" then
-                    v.CFrame = hrp.CFrame
-                end
-            end
-        end
-    end
+   while magnetActive do
+       task.wait(0.5)
+       local char = LocalPlayer.Character
+       local hrp = char and char:FindFirstChild("HumanoidRootPart")
+       if hrp then
+           for _, v in ipairs(workspace:GetDescendants()) do
+               if v:IsA("BasePart") and not v.Anchored and not v:IsDescendantOf(char) and v.Name == "Handle" then
+                   v.CFrame = hrp.CFrame
+               end
+           end
+       end
+   end
 end)
 end)
 
@@ -3253,18 +3266,16 @@ addCommand({"rainbowui", "disco"}, "Kích hoạt hiệu ứng đổi màu UI li�
 uiColorLoop = not uiColorLoop
 notify("Disco UI", uiColorLoop and "Chế độ Disco lấp lánh đã BẬT!" or "Chế độ Disco đã TẤT!", 3)
 task.spawn(function()
-    while uiColorLoop do
-        local color = Color3.fromHSV(tick() % 5 / 5, 0.8, 1)
-        applyNewThemeColor(color, true)
-        task.wait(0.1)
-    end
+   while uiColorLoop do
+       local color = Color3.fromHSV(tick() % 5 / 5, 0.8, 1)
+       applyNewThemeColor(color, true)
+       task.wait(0.1)
+   end
 end)
 end)
 
 
 -- ==================== SORT AND POPULATE LIST VISUALLY ====================
--- This loop is placed at the very bottom to guarantee all dynamically registered 
--- commands (including new, batch, custom ones) are visualised properly inside the Left UI column.
 local sortedList = {}
 local trackerIndex = 1
 local descToId = {}
@@ -3272,9 +3283,9 @@ local descToId = {}
 for name, data in pairs(commands) do
 local desc = data.desc
 if not descToId[desc] then
-    descToId[desc] = trackerIndex
-    sortedList[trackerIndex] = { desc = desc, names = {} }
-    trackerIndex = trackerIndex + 1
+   descToId[desc] = trackerIndex
+   sortedList[trackerIndex] = { desc = desc, names = {} }
+   trackerIndex = trackerIndex + 1
 end
 local targetGroup = sortedList[descToId[desc]]
 table.insert(targetGroup.names, name)
@@ -3290,16 +3301,110 @@ end
 pcall(function()
 local r, g, b = currentSettings.ThemeColor:match("(%d+),%s*(%d+),%s*(%d+)")
 if r and g and b then
-    applyNewThemeColor(Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b)), true)
+   applyNewThemeColor(Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b)), true)
 end
 
 local tr, tg, tb = currentSettings.TextColor:match("(%d+),%s*(%d+),%s*(%d+)")
 if tr and tg and tb then
-    applyNewTextColor(Color3.fromRGB(tonumber(tr), tonumber(tg), tonumber(tb)), true)
+   applyNewTextColor(Color3.fromRGB(tonumber(tr), tonumber(tg), tonumber(tb)), true)
 end
 
 local op = tonumber(currentSettings.Opacity)
 if op then
-    applyOpacity(op)
+   applyOpacity(op)
 end
+end)
+
+
+-- Auto Open GUI if Rejoined
+if autoOpenFlag then
+    task.spawn(function()
+        task.wait(1)
+        if not isOpened then
+            toggleUI()
+        end
+    end)
+end
+
+
+-- Antikick, Antiban & Auto-Rejoin Setup
+local function triggerRejoin()
+    safeWriteFile("PureCommander_AutoOpen.txt", "true")
+    
+    -- Setup a Custom GUI overlay on screen before self-kicking
+    pcall(function()
+        local OverlayScreen = Instance.new("ScreenGui")
+        OverlayScreen.Name = "PureRejoinOverlay"
+        OverlayScreen.Parent = CoreGui
+        
+        local Frame = Instance.new("Frame")
+        Frame.Size = UDim2.new(1, 0, 1, 0)
+        Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        Frame.Parent = OverlayScreen
+        
+        local Label = Instance.new("TextLabel")
+        Label.Size = UDim2.new(1, 0, 0, 50)
+        Label.Position = UDim2.new(0, 0, 0.5, -25)
+        Label.BackgroundTransparency = 1
+        Label.Text = "Đang rejoin..."
+        Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Label.Font = Enum.Font.GothamBold
+        Label.TextSize = 24
+        Label.Parent = Frame
+    end)
+    
+    task.wait(0.5)
+    
+    -- Teleport attempt
+    pcall(function()
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end)
+    
+    -- Fast loop attempt in case teleport failed
+    task.spawn(function()
+        while task.wait(1.5) do
+            pcall(function()
+                game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+            end)
+        end
+    end)
+end
+
+
+-- Metatable Hooking for local scripts trying to kick
+pcall(function()
+    if hookmetamethod then
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if self == LocalPlayer and (method == "Kick" or method == "kick") then
+                task.spawn(function()
+                    if InfoText then InfoText.Text = "Đang rejoin..." end
+                    triggerRejoin()
+                end)
+                return
+            end
+            return oldNamecall(self, ...)
+        end)
+    end
+end)
+
+pcall(function()
+    if hookfunction and LocalPlayer.Kick then
+        hookfunction(LocalPlayer.Kick, function(self, ...)
+            task.spawn(function()
+                if InfoText then InfoText.Text = "Đang rejoin..." end
+                triggerRejoin()
+            end)
+            return
+        end)
+    end
+end)
+
+
+-- Detect Server kick/disconnect screen (to rejoin instantly)
+pcall(function()
+    game:GetService("GuiService").ErrorMessageChanged:Connect(function()
+        triggerRejoin()
+    end)
 end)

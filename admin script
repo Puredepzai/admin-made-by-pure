@@ -3,7 +3,7 @@
 ██╔══██╗██║   ██║██╔══██╗██╔════╝    ██╔══██╗██╔══██╗████╗ ████║██║████╗  ██║
 ██████╔╝██║   ██║██████╔╝█████╗      ███████║██║  ██║██╔████╔██║██║██╔██╗ ██║
 ██╔═══╝ ██║   ██║██╔══██╗██╔══╝      ██╔══██║██║  ██║██║╚██╔╝██║██║██║╚██╗██║
-██║     ╚██████╔╝██║  ██║███████╗    ██║  ██║██████╔╝██║ ╚═╝ ██║██║██║ ╚████║
+██║     ╚██████╔╝██║  ██║███████╗    ██║  ██║███████║██║  ╚═╝ ██║██║██║ ╚████║
 ╚═╝      ╚═════╝ ╚═╝  ╚═╝╚══════╝    ╚═╝  ╚═╝╚═════╝ ╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝
 Pure Commander - Premium Command Console for Delta, Vega X, Fluxus (Optimized)
 --]]
@@ -14,6 +14,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Prevent infinite hanging on injection
 local LocalPlayer = Players.LocalPlayer
@@ -24,23 +25,33 @@ local Camera = workspace.CurrentCamera or workspace:FindFirstChildOfClass("Camer
 
 -- Mobile Friendly Safe GUI Parent Locator (Optimized & Protected)
 local function getSafeParent()
-local success, result = pcall(gethui)
-if success and result and typeof(result) == "Instance" then return result end
+    local success, result = pcall(gethui)
+    if success and result and typeof(result) == "Instance" then return result end
 
-local testGui = Instance.new("ScreenGui")
-success, result = pcall(function() 
-    local cg = game:GetService("CoreGui")
-    testGui.Parent = cg
-    return cg
-end)
-pcall(function() testGui:Destroy() end)
-if success and result and typeof(result) == "Instance" then return result end
+    local success2, result2 = pcall(function() return game:GetService("CoreGui") end)
+    if success2 and result2 and typeof(result2) == "Instance" then return result2 end
 
-local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 10)
-return playerGui
+    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 15)
+    return playerGui
 end
 
 local CoreGui = getSafeParent()
+
+-- Forward declarations for scoping safety
+local notify
+local triggerRejoin
+local getClosestPlayerToCursor
+local SkidFling
+local setAimbotState
+local toggleRTX
+local applyNewThemeColor
+local applyNewTextColor
+local applyOpacity
+local applyToggleImage
+local applyToggleBorder
+local applyBgImage
+local verifyAndApplyToggle
+local verifyAndApplyBg
 
 -- Safe File System Wrapper
 local function safeIsFile(path)
@@ -72,7 +83,10 @@ local ConfigFile = "PureCommander_Settings.json"
 local currentSettings = {
 ThemeColor = "0,170,255",
 TextColor = "255,255,255",
-Opacity = "0.2"
+Opacity = "0.2",
+ToggleImage = "",
+ToggleBorderThickness = "2",
+BgImage = ""
 }
 
 local function loadConfig()
@@ -88,16 +102,22 @@ end
 end
 
 local function saveConfig()
-safeWriteFile(ConfigFile, HttpService:JSONEncode(currentSettings))
+    pcall(function()
+        if writefile then
+            writefile(ConfigFile, HttpService:JSONEncode(currentSettings))
+        end
+    end)
 end
 
 loadConfig()
 
 -- Recreate Protection (Protected from pcall failures)
 pcall(function()
-local existing = CoreGui:FindFirstChild("PureAdminGUI")
-if existing then
-   existing:Destroy()
+if CoreGui then
+    local existing = CoreGui:FindFirstChild("PureAdminGUI")
+    if existing then
+       existing:Destroy()
+    end
 end
 end)
 
@@ -205,7 +225,23 @@ ToggleCorner.Parent = ToggleButton
 local ToggleStroke = Instance.new("UIStroke")
 ToggleStroke.Thickness = 2
 ToggleStroke.Color = getgenv().ThemeColor
+ToggleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 ToggleStroke.Parent = ToggleButton
+
+-- Modified ToggleImage to fill the toggle completely (Crop + Full Size)
+local ToggleImage = Instance.new("ImageLabel")
+ToggleImage.Name = "ToggleImage"
+ToggleImage.Parent = ToggleButton
+ToggleImage.Size = UDim2.new(1, 0, 1, 0)
+ToggleImage.Position = UDim2.new(0, 0, 0, 0)
+ToggleImage.BackgroundTransparency = 1
+ToggleImage.Image = ""
+ToggleImage.ScaleType = Enum.ScaleType.Crop
+ToggleImage.ZIndex = 3
+
+local ToggleImageCorner = Instance.new("UICorner")
+ToggleImageCorner.CornerRadius = UDim.new(0, 30)
+ToggleImageCorner.Parent = ToggleImage
 
 -- Main UI Frame
 local MainFrame = Instance.new("Frame")
@@ -252,7 +288,68 @@ end
 return convertedAssetId
 end
 
-local function applyBgImage(idStr)
+-- Modified verify and apply function with "sai id" handling for Toggle Image
+verifyAndApplyToggle = function(text)
+    text = text:gsub("%s+", "")
+    local assetId = tonumber(text)
+
+    if assetId then
+        task.spawn(function()
+            local success, assetInfo = pcall(function()
+                return MarketplaceService:GetProductInfo(assetId)
+            end)
+
+            local actualImageId = getRawImageId(assetId) or assetId
+
+            if success and assetInfo then
+                ToggleImage.Image = "rbxassetid://" .. actualImageId
+                ToggleButton.Text = ""
+                currentSettings.ToggleImage = tostring(assetId)
+                saveConfig()
+            else
+                if actualImageId then
+                    ToggleImage.Image = "rbxassetid://" .. actualImageId
+                    ToggleButton.Text = ""
+                    currentSettings.ToggleImage = tostring(assetId)
+                    saveConfig()
+                else
+                    ToggleImage.Image = ""
+                    ToggleButton.Text = "PC"
+                    currentSettings.ToggleImage = ""
+                    saveConfig()
+                    notify("Nút Tròn System", "sai id", 2)
+                end
+            end
+        end)
+    else
+        ToggleImage.Image = ""
+        ToggleButton.Text = "PC"
+        currentSettings.ToggleImage = ""
+        saveConfig()
+    end
+end
+
+applyToggleImage = function(idStr)
+    idStr = idStr:gsub("%s+", "")
+    local assetId = tonumber(idStr)
+    if assetId then
+        task.spawn(function()
+            local rawId = getRawImageId(assetId) or assetId
+            ToggleImage.Image = "rbxassetid://" .. rawId
+            ToggleButton.Text = ""
+        end)
+    else
+        ToggleImage.Image = ""
+        ToggleButton.Text = "PC"
+    end
+end
+
+applyToggleBorder = function(thickness)
+    local t = tonumber(thickness) or 2
+    ToggleStroke.Thickness = t
+end
+
+applyBgImage = function(idStr)
 local assetId = tonumber(idStr)
 if assetId then
    task.spawn(function()
@@ -266,12 +363,20 @@ else
 end
 end
 
-if safeIsFile(FileConfig) then
-local content = safeReadFile(FileConfig)
-if content and content ~= "" then
-   applyBgImage(content)
-end
-end
+-- Auto-load background and toggle image settings immediately upon join
+pcall(function()
+    if currentSettings.BgImage and currentSettings.BgImage ~= "" then
+        applyBgImage(currentSettings.BgImage)
+    elseif safeIsFile(FileConfig) then
+        local content = safeReadFile(FileConfig)
+        if content and content ~= "" then
+            applyBgImage(content)
+        end
+    end
+    if currentSettings.ToggleImage and currentSettings.ToggleImage ~= "" then
+        applyToggleImage(currentSettings.ToggleImage)
+    end
+end)
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 16)
@@ -296,7 +401,7 @@ TopBarCorner.CornerRadius = UDim.new(0, 16)
 TopBarCorner.Parent = TopBar
 
 local TopBarCover = Instance.new("Frame")
-TopBarCover.Size = UDim2.new(1, 0, 0.5, 0)
+TopBarCover.Size = UDim2.new(1, 0, 0, 5)
 TopBarCover.Position = UDim2.new(0, 0, 0.5, 0)
 TopBarCover.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 TopBarCover.BorderSizePixel = 0
@@ -304,7 +409,7 @@ TopBarCover.Parent = TopBar
 
 local Title = Instance.new("TextLabel")
 Title.Parent = TopBar
-Title.Text = "PURE COMMANDER [140+ CMDS]"
+Title.Text = "PURE COMMANDER [170+ CMDS]"
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 16
 Title.TextColor3 = Color3.fromRGB(240, 240, 240)
@@ -650,7 +755,7 @@ CircleStroke.Color = aimbotColor
 CircleStroke.Thickness = 1.5
 CircleStroke.Parent = FOVCircle
 
-local function getClosestPlayerToCursor()
+getClosestPlayerToCursor = function()
 local closestPlayer = nil
 local shortestDistance = math.huge
 local mousePos = UserInputService:GetMouseLocation()
@@ -692,8 +797,10 @@ end)
 local InfoCardStroke = Instance.new("UIStroke")
 local InfoTitle = Instance.new("TextLabel")
 
+local ApplyToggleCustBtn = nil
+
 -- ==================== SYSTEM COLOR THEME & INTERFACE OPTION ====================
-local function applyNewThemeColor(color, blockSave)
+applyNewThemeColor = function(color, blockSave)
 getgenv().ThemeColor = color
 ToggleButton.TextColor3 = color
 LeftTitle.TextColor3 = color
@@ -707,6 +814,10 @@ CircleStroke.Color = color
 MainStroke.Color = color
 ToggleStroke.Color = color
 InputStroke.Color = color
+
+if ApplyToggleCustBtn then
+    ApplyToggleCustBtn.BackgroundColor3 = color
+end
 
 for _, child in ipairs(SettingsScroll:GetChildren()) do
    if child:IsA("Frame") then
@@ -751,7 +862,7 @@ end)
 
 
 -- ==================== GUI TEXT COLOR SYSTEM ====================
-local function applyNewTextColor(color, blockSave)
+applyNewTextColor = function(color, blockSave)
 for _, item in ipairs(PureAdminGUI:GetDescendants()) do
    if item:IsA("TextLabel") or item:IsA("TextBox") or item:IsA("TextButton") then
        if item.Name ~= "CloseButton" and item.Name ~= "ToggleButton" then
@@ -804,7 +915,7 @@ BgImageInput.Position = UDim2.new(0, 10, 0, 30)
 BgImageInput.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 BgImageInput.PlaceholderText = "Nhập Asset ID hình nền..."
 BgImageInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
-BgImageInput.Text = safeIsFile(FileConfig) and safeReadFile(FileConfig) or ""
+BgImageInput.Text = currentSettings.BgImage or (safeIsFile(FileConfig) and safeReadFile(FileConfig) or "")
 BgImageInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 BgImageInput.Font = Enum.Font.Gotham
 BgImageInput.TextSize = 11
@@ -841,9 +952,7 @@ BgStatusLabel.TextSize = 10
 BgStatusLabel.ZIndex = 3
 BgStatusLabel.Parent = BackgroundBlock
 
-local MarketplaceService = game:GetService("MarketplaceService")
-
-local function verifyAndApplyBg(text)
+verifyAndApplyBg = function(text)
 text = text:gsub("%s+", "")
 local assetId = tonumber(text)
 
@@ -860,17 +969,23 @@ if assetId then
 
        if success and assetInfo then
            BackgroundImage.Image = "rbxassetid://" .. actualImageId
+           currentSettings.BgImage = tostring(assetId)
+           saveConfig()
            safeWriteFile(FileConfig, tostring(assetId))
            BgStatusLabel.Text = "ảnh nền đã được đặt"
            BgStatusLabel.TextColor3 = Color3.fromRGB(0, 220, 120)
        else
            if actualImageId then
                BackgroundImage.Image = "rbxassetid://" .. actualImageId
+               currentSettings.BgImage = tostring(assetId)
+               saveConfig()
                safeWriteFile(FileConfig, tostring(assetId))
                BgStatusLabel.Text = "ảnh nền đã được đặt"
                BgStatusLabel.TextColor3 = Color3.fromRGB(0, 220, 120)
            else
                BackgroundImage.Image = ""
+               currentSettings.BgImage = ""
+               saveConfig()
                BgStatusLabel.Text = "sai id"
                BgStatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
            end
@@ -879,6 +994,8 @@ if assetId then
 else
    BackgroundImage.Image = ""
    safeDelFile(FileConfig)
+   currentSettings.BgImage = ""
+   saveConfig()
    BgStatusLabel.Text = "sai id"
    BgStatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
 end
@@ -926,7 +1043,68 @@ else
 end
 end)
 
--- ==================== NEW FEATURES: AIMBOT CONTROL PANEL ====================
+-- ==================== TOGGLE BUTTON CUSTOMIZATION ====================
+local ToggleCustBlock = createSettingContainer(SettingsScroll, "TÙY CHỈNH NÚT TRÒN (TOGGLE BUTTON)", 140)
+
+local ToggleImageInput = Instance.new("TextBox")
+ToggleImageInput.Size = UDim2.new(0.94, 0, 0, 30)
+ToggleImageInput.Position = UDim2.new(0, 10, 0, 25)
+ToggleImageInput.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ToggleImageInput.PlaceholderText = "Nhập Asset ID ảnh nút tròn..."
+ToggleImageInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+ToggleImageInput.Text = currentSettings.ToggleImage or ""
+ToggleImageInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleImageInput.Font = Enum.Font.Gotham
+ToggleImageInput.TextSize = 11
+ToggleImageInput.ZIndex = 3
+ToggleImageInput.Parent = ToggleCustBlock
+
+local ToggleImgCorner = Instance.new("UICorner")
+ToggleImgCorner.CornerRadius = UDim.new(0, 6)
+ToggleImgCorner.Parent = ToggleImageInput
+
+local ToggleBorderInput = Instance.new("TextBox")
+ToggleBorderInput.Size = UDim2.new(0.94, 0, 0, 30)
+ToggleBorderInput.Position = UDim2.new(0, 10, 0, 65)
+ToggleBorderInput.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ToggleBorderInput.PlaceholderText = "Độ dày viền nút tròn (mặc định: 2)..."
+ToggleBorderInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+ToggleBorderInput.Text = currentSettings.ToggleBorderThickness or "2"
+ToggleBorderInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBorderInput.Font = Enum.Font.Gotham
+ToggleBorderInput.TextSize = 11
+ToggleBorderInput.ZIndex = 3
+ToggleBorderInput.Parent = ToggleCustBlock
+
+local ToggleBdrCorner = Instance.new("UICorner")
+ToggleBdrCorner.CornerRadius = UDim.new(0, 6)
+ToggleBdrCorner.Parent = ToggleBorderInput
+
+ApplyToggleCustBtn = Instance.new("TextButton")
+ApplyToggleCustBtn.Size = UDim2.new(0.94, 0, 0, 30)
+ApplyToggleCustBtn.Position = UDim2.new(0, 10, 0, 105)
+ApplyToggleCustBtn.BackgroundColor3 = getgenv().ThemeColor
+ApplyToggleCustBtn.Text = "Áp dụng tùy chỉnh nút tròn"
+ApplyToggleCustBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ApplyToggleCustBtn.Font = Enum.Font.GothamBold
+ApplyToggleCustBtn.TextSize = 11
+ApplyToggleCustBtn.ZIndex = 3
+ApplyToggleCustBtn.Parent = ToggleCustBlock
+
+local ApplyToggleCustCorner = Instance.new("UICorner")
+ApplyToggleCustCorner.CornerRadius = UDim.new(0, 6)
+ApplyToggleCustCorner.Parent = ApplyToggleCustBtn
+
+ApplyToggleCustBtn.MouseButton1Click:Connect(function()
+    currentSettings.ToggleBorderThickness = ToggleBorderInput.Text
+    saveConfig()
+    verifyAndApplyToggle(ToggleImageInput.Text)
+    applyToggleBorder(ToggleBorderInput.Text)
+    notify("Toggle Settings", "Đã cập nhật tùy chỉnh nút tròn!", 2)
+end)
+
+
+-- ==================== NEW PLAYERS DETECTOR & AIMBOT RETICLE (UPDATED) ====================
 local AimbotBlock = createSettingContainer(SettingsScroll, "TÍNH NĂNG AIM BOT", 115)
 
 local AimbotToggle = Instance.new("TextButton")
@@ -944,7 +1122,7 @@ local AimbotToggleCorner = Instance.new("UICorner")
 AimbotToggleCorner.CornerRadius = UDim.new(0, 6)
 AimbotToggleCorner.Parent = AimbotToggle
 
-local function setAimbotState(state)
+setAimbotState = function(state)
 aimbotEnabled = state
 FOVCircle.Visible = aimbotEnabled
 if aimbotEnabled then
@@ -986,7 +1164,7 @@ end
 end)
 
 -- ==================== NEW FEATURES: RTX CONTROL PANEL ====================
-local function toggleRTX(state)
+toggleRTX = function(state)
 rtxEnabled = state
 if rtxEnabled then
    Lighting.Brightness = 2.5
@@ -1069,7 +1247,7 @@ local OpacityCorner = Instance.new("UICorner")
 OpacityCorner.CornerRadius = UDim.new(0, 6)
 OpacityCorner.Parent = OpacityInput
 
-local function applyOpacity(val)
+applyOpacity = function(val)
 MainFrame.BackgroundTransparency = val
 BackgroundImage.ImageTransparency = val
 currentSettings.Opacity = tostring(val)
@@ -1100,7 +1278,7 @@ InfoText.ZIndex = 2
 
 
 -- Dynamic Custom Notifications
-local function notify(title, text, duration)
+notify = function(title, text, duration)
 task.spawn(function()
    local Notification = Instance.new("Frame")
    Notification.Parent = PureAdminGUI
@@ -1412,7 +1590,7 @@ end
 end)
 
 -- ==================== PHYSICS & TARGET FLING LOGIC ====================
-local function SkidFling(TargetPlayer)
+SkidFling = function(TargetPlayer)
 if not TargetPlayer or TargetPlayer == LocalPlayer then return end
 local char = LocalPlayer.Character
 local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -2741,9 +2919,16 @@ if MainFrame and LeftColumn and RightColumn then
 end
 end)
 
--- ==================== FREECAM COMMAND ====================
-addCommand({"freecam", "fc"}, "Bật FreeCam với Joystick điều khiển", function()
-if Camera.CameraType == Enum.CameraType.Scriptable then
+-- ==================== FREECOM COMMAND ====================
+local freecamActive = false
+local freecamConnection = nil
+local freecamRotX, freecamRotY = 0, 0
+local freecamPos = Vector3.new(0, 0, 0)
+
+addCommand({"freecam", "fc"}, "Bật FreeCam (WASD di chuyển, Chuột/Touch để xoay)", function()
+if freecamActive then
+   freecamActive = false
+   if freecamConnection then freecamConnection:Disconnect() freecamConnection = nil end
    Camera.CameraType = Enum.CameraType.Custom
    local j = PureAdminGUI:FindFirstChild("FreeCamJoystick")
    if j then j:Destroy() end
@@ -2751,8 +2936,12 @@ if Camera.CameraType == Enum.CameraType.Scriptable then
    return
 end
 
+freecamActive = true
 Camera.CameraType = Enum.CameraType.Scriptable
-local camPos = Camera.CFrame.Position
+local camCFrame = Camera.CFrame
+freecamPos = camCFrame.Position
+freecamRotX, freecamRotY = camCFrame:ToEulerAnglesYXZ()
+
 local Joystick = Instance.new("Frame")
 Joystick.Name = "FreeCamJoystick"
 Joystick.Parent = PureAdminGUI
@@ -2775,16 +2964,51 @@ Joystick.InputChanged:Connect(function(input)
    end
 end)
 
-local renderConnection
-renderConnection = RunService.RenderStepped:Connect(function()
-   if Camera.CameraType == Enum.CameraType.Scriptable and Joystick.Parent then
-       camPos = camPos + (Camera.CFrame.LookVector * -moveVec.Z) + (Camera.CFrame.RightVector * moveVec.X)
-       Camera.CFrame = CFrame.new(camPos, camPos + Camera.CFrame.LookVector)
-   else
-       renderConnection:Disconnect()
+freecamConnection = RunService.RenderStepped:Connect(function(dt)
+   if not freecamActive then return end
+   
+   local kbMove = Vector3.new(0, 0, 0)
+   if UserInputService:IsKeyDown(Enum.KeyCode.W) then kbMove = kbMove + Vector3.new(0, 0, -1) end
+   if UserInputService:IsKeyDown(Enum.KeyCode.S) then kbMove = kbMove + Vector3.new(0, 0, 1) end
+   if UserInputService:IsKeyDown(Enum.KeyCode.A) then kbMove = kbMove + Vector3.new(-1, 0, 0) end
+   if UserInputService:IsKeyDown(Enum.KeyCode.D) then kbMove = kbMove + Vector3.new(1, 0, 0) end
+   if UserInputService:IsKeyDown(Enum.KeyCode.E) then freecamPos = freecamPos + Vector3.new(0, 1, 0) end
+   if UserInputService:IsKeyDown(Enum.KeyCode.Q) then freecamPos = freecamPos + Vector3.new(0, -1, 0) end
+
+   local finalMove = kbMove.Magnitude > 0 and kbMove.Unit or moveVec
+   local currentSpeed = 50 * dt
+   local lookCF = CFrame.Angles(0, freecamRotY, 0) * CFrame.Angles(freecamRotX, 0, 0)
+   freecamPos = freecamPos + lookCF:VectorToWorldSpace(finalMove) * currentSpeed
+   Camera.CFrame = CFrame.new(freecamPos) * lookCF
+end)
+
+-- Enable screen dragging to rotate camera
+local isRotating = false
+local lastInputPos = nil
+UserInputService.InputBegan:Connect(function(input, processed)
+   if not processed and (input.UserInputType == Enum.UserInputType.MouseButton2 or input.UserInputType == Enum.UserInputType.Touch) then
+       isRotating = true
+       lastInputPos = input.Position
    end
 end)
-notify("FreeCam", "Đã bật! Dùng Joystick bên trái để bay.", 3)
+UserInputService.InputEnded:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseButton2 or input.UserInputType == Enum.UserInputType.Touch then
+       isRotating = false
+       lastInputPos = nil
+   end
+end)
+UserInputService.InputChanged:Connect(function(input)
+   if isRotating and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+       if lastInputPos then
+           local delta = input.Position - lastInputPos
+           freecamRotX = freecamRotX - delta.Y * 0.005
+           freecamRotY = freecamRotY - delta.X * 0.005
+           lastInputPos = input.Position
+       end
+   end
+end)
+
+notify("FreeCam", "Đã bật! WASD để di chuyển, chuột phải/vuốt màn hình để xoay.", 3)
 end)
 
 -- ==================== SUPER FIX LAG POTATO ====================
@@ -3070,7 +3294,7 @@ addCommand({"spamsound"}, "Kích hoạt phát tất cả tệp âm thanh có tro
 end)
 
 -- 12. Sao Chép ID Place Đang Chơi (Copy script / Place ID)
-addCommand({"copyscript", "copyplaceid"}, "Sao chép mã game ID hiện tại vào bộ nhớ tạm", function()
+addCommand({"copyscript", "copyplaceid"}, "Mã ID game hiện tại vào bộ nhớ tạm", function()
   local success, _ = pcall(function()
       setclipboard(tostring(game.PlaceId))
   end)
@@ -3275,6 +3499,327 @@ end)
 end)
 
 
+-- ==================== 10 BRAND NEW SUPER FUNCTIONS (ADDED) ====================
+
+-- 1. Click Teleport (No tool required, click to move)
+local clickTpActive = false
+local clickTpConnection = nil
+addCommand({"clicktp", "clickteleport"}, "Click chuột để dịch chuyển tức thời không cần công cụ", function()
+    clickTpActive = not clickTpActive
+    notify("Click TP", clickTpActive and "Đã BẬT! Click chuột trái để di chuyển." or "Đã TẤT!", 3)
+    if clickTpActive then
+        clickTpConnection = UserInputService.InputBegan:Connect(function(input, processed)
+            if not processed and input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local mouse = LocalPlayer:GetMouse()
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp and mouse.Hit then
+                    hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+                end
+            end
+        end)
+    else
+        if clickTpConnection then
+            clickTpConnection:Disconnect()
+            clickTpConnection = nil
+        end
+    end
+end)
+
+-- 2. Fly Teleport to Target safely
+addCommand({"flytp"}, "Bay mượt mà đến người chơi để tránh bị kích phát log dịch chuyển", function(args)
+    local targets = getTargetPlayer(args[1])
+    if targets[1] and targets[1].Character then
+        local tHrp = targets[1].Character:FindFirstChild("HumanoidRootPart")
+        local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if tHrp and myHrp then
+            notify("Fly TP", "Đang di chuyển an toàn tới " .. targets[1].DisplayName, 3)
+            local tween = TweenService:Create(myHrp, TweenInfo.new(2, Enum.EasingStyle.Quad), {CFrame = tHrp.CFrame})
+            tween:Play()
+        end
+    end
+end)
+
+-- 3. Anti-Anchor Me
+local antiAnchorActive = false
+addCommand({"antianchor"}, "Tự động chống đóng băng (Anti-Anchor) ngăn script admin khống chế", function()
+    antiAnchorActive = not antiAnchorActive
+    notify("Anti-Anchor", antiAnchorActive and "Đã BẬT chống đóng băng!" or "Đã TẤT!", 3)
+    task.spawn(function()
+        while antiAnchorActive do
+            task.wait(1)
+            local char = LocalPlayer.Character
+            if char then
+                for _, v in ipairs(char:GetDescendants()) do
+                    if v:IsA("BasePart") and v.Anchored then
+                        v.Anchored = false
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+-- 4. Freeze Map Physics Objects
+addCommand({"freezeparts"}, "Đóng băng toàn bộ vật thể không neo trong map", function()
+    local count = 0
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") and not v.Anchored and not v:IsDescendantOf(LocalPlayer.Character) then
+            v.Anchored = true
+            count = count + 1
+        end
+    end
+    notify("Physics Freezer", "Đã đóng băng " .. count .. " vật thể thành công!", 3)
+end)
+
+-- 5. Tool / Item ESP Highlighter
+local itemEspActive = false
+addCommand({"itemesp"}, "Hiển thị làm nổi bật các công cụ/vật phẩm rơi tự do", function()
+    itemEspActive = not itemEspActive
+    notify("Item ESP", itemEspActive and "Đã kích hoạt tìm kiếm vật phẩm!" or "Đã tắt tìm kiếm!", 3)
+    if itemEspActive then
+        task.spawn(function()
+            while itemEspActive do
+                task.wait(2)
+                for _, v in ipairs(workspace:GetChildren()) do
+                    if v:IsA("Tool") or v:IsA("BackpackItem") then
+                        local highlight = v:FindFirstChild("ItemHighlight")
+                        if not highlight then
+                            highlight = Instance.new("Highlight")
+                            highlight.Name = "ItemHighlight"
+                            highlight.FillColor = Color3.fromRGB(0, 255, 100)
+                            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            highlight.FillTransparency = 0.4
+                            highlight.Parent = v
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        for _, v in ipairs(workspace:GetChildren()) do
+            if v:IsA("Tool") and v:FindFirstChild("ItemHighlight") then
+                v.ItemHighlight:Destroy()
+            end
+        end
+    end
+end)
+
+-- 6. Blockify Everyone (Locally make everyone blocky)
+addCommand({"blockyall"}, "Biến đổi tất cả người chơi khác thành hình vuông khối hộp", function()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            for _, limb in ipairs(p.Character:GetChildren()) do
+                if limb:IsA("CharacterMesh") or limb:IsA("Accessory") then
+                    limb:Destroy()
+                end
+            end
+        end
+    end
+    notify("Blockify", "Đã biến mọi người thành dạng khối vuông!", 3)
+end)
+
+-- 7. Chat Quote Spammer
+local spamQuotesActive = false
+addCommand({"funspammer"}, "Tự động gửi tin nhắn chat vui nhộn liên tục lên tổng đài", function()
+    spamQuotesActive = not spamQuotesActive
+    notify("Fun Spammer", spamQuotesActive and "Bắt đầu spam tin nhắn chat!" or "Đã dừng spam!", 3)
+    local quotes = {
+        "Pure Commander làm chủ trò chơi!",
+        "Đừng cố đuổi theo tôi, tôi quá nhanh!",
+        "Vật lý Roblox thật là thú vị!",
+        "Đang trải nghiệm bộ console đỉnh cao nhất!",
+        "Bạn cần tốc độ? Gõ sbypass ngay!"
+    }
+    task.spawn(function()
+        while spamQuotesActive do
+            local msg = quotes[math.random(1, #quotes)]
+            local success, _ = pcall(function()
+                local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+                if chatEvents and chatEvents:FindFirstChild("SayMessageRequest") then
+                    chatEvents.SayMessageRequest:FireServer(msg, "All")
+                else
+                    game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(msg)
+                end
+            end)
+            task.wait(3)
+        end
+    end)
+end)
+
+-- 8. Reset Physics Settings
+addCommand({"resetphysics"}, "Đặt lại toàn bộ trọng lực và va chạm về mặc định ban đầu", function()
+    workspace.Gravity = normalGravity
+    noclipActive = false
+    if LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+    notify("Physics", "Đã khôi phục trọng lực và va chạm bình thường!", 3)
+end)
+
+-- 9. Invisible Camera Peek Mode
+local invCamActive = false
+addCommand({"invcam"}, "Cho phép camera tự do đi xuyên thấu lòng đất bản đồ", function()
+    invCamActive = not invCamActive
+    if invCamActive then
+        Camera.CameraType = Enum.CameraType.Scriptable
+        notify("InvCam", "Góc quay xuyên thấu bật! Nhấp chuột phải/Vuốt để xoay.", 3)
+    else
+        Camera.CameraType = Enum.CameraType.Custom
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            Camera.CameraSubject = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        end
+        notify("InvCam", "Đã trả Camera về vị trí cơ thể gốc.", 2)
+    end
+end)
+
+-- 10. Memory Clean & Rejoin
+addCommand({"cleanrejoin"}, "Dọn dẹp rác bộ nhớ đệm client và rejoin lại server nhanh", function()
+    notify("System Clean", "Đang giải phóng bộ nhớ và kết nối lại...", 2)
+    pcall(function()
+        for _, v in pairs(game:GetDescendants()) do
+            if v:IsA("Message") or v:IsA("Hint") then v:Destroy() end
+        end
+    end)
+    task.wait(0.5)
+    triggerRejoin()
+end)
+
+
+-- ==================== 20 EXTRA INFINITE YIELD style FUNCTIONS ====================
+addCommand({"ff"}, "Tạo giáp bảo vệ ForceField (Client)", function()
+    local char = LocalPlayer.Character
+    if char then Instance.new("ForceField", char) end
+end)
+addCommand({"unff"}, "Xóa giáp bảo vệ ForceField", function()
+    local char = LocalPlayer.Character
+    if char then
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("ForceField") then v:Destroy() end
+        end
+    end
+end)
+addCommand({"sparkles"}, "Tạo hiệu ứng lấp lánh quanh người", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then Instance.new("Sparkles", hrp) end
+end)
+addCommand({"unsparkles"}, "Xóa hiệu ứng lấp lánh", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        for _, v in ipairs(hrp:GetChildren()) do
+            if v:IsA("Sparkles") then v:Destroy() end
+        end
+    end
+end)
+addCommand({"fire"}, "Tạo hiệu ứng bốc hỏa quanh người", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then Instance.new("Fire", hrp) end
+end)
+addCommand({"unfire"}, "Xóa hiệu ứng bốc hỏa", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        for _, v in ipairs(hrp:GetChildren()) do
+            if v:IsA("Fire") then v:Destroy() end
+        end
+    end
+end)
+addCommand({"smoke"}, "Tạo hiệu ứng khói quanh người", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then Instance.new("Smoke", hrp) end
+end)
+addCommand({"unsmoke"}, "Xóa hiệu ứng khói", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        for _, v in ipairs(hrp:GetChildren()) do
+            if v:IsA("Smoke") then v:Destroy() end
+        end
+    end
+end)
+addCommand({"localinvisible", "linvis"}, "Tàng hình nhân vật phía client", function()
+    local char = LocalPlayer.Character
+    if char then
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") or v:IsA("Decal") then v.Transparency = 1 end
+        end
+    end
+end)
+addCommand({"localvisible", "lvis"}, "Hiện lại nhân vật phía client", function()
+    local char = LocalPlayer.Character
+    if char then
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then v.Transparency = 0 elseif v:IsA("Decal") then v.Transparency = 0 end
+        end
+    end
+end)
+addCommand({"stun"}, "Gây choáng nhân vật (nằm xuống)", function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.PlatformStand = true end
+end)
+addCommand({"unstun"}, "Tắt trạng thái choáng nhân vật", function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.PlatformStand = false end
+end)
+addCommand({"light"}, "Tạo nguồn sáng PointLight di động", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local pl = Instance.new("PointLight", hrp)
+        pl.Range = 30
+        pl.Brightness = 2
+    end
+end)
+addCommand({"unlight"}, "Tắt nguồn sáng di động", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        for _, v in ipairs(hrp:GetChildren()) do
+            if v:IsA("PointLight") then v:Destroy() end
+        end
+    end
+end)
+addCommand({"resetws"}, "Đặt lại tốc độ chạy mặc định", function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = 16 end
+end)
+addCommand({"resetjp"}, "Đặt lại lực nhảy mặc định", function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.JumpPower = 50 end
+end)
+addCommand({"fakekick"}, "Tạo thông báo Kick giả lập (Client)", function(args)
+    local msg = table.concat(args, " ")
+    if msg == "" then msg = "Bạn đã bị kick!" end
+    LocalPlayer:Kick(msg)
+end)
+addCommand({"removesmoke"}, "Xóa khói mù trong map", function()
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Smoke") then v:Destroy() end
+    end
+end)
+addCommand({"setambient"}, "Đổi màu ánh sáng môi trường", function(args)
+    local r = tonumber(args[1]) or 128
+    local g = tonumber(args[2]) or 128
+    local b = tonumber(args[3]) or 128
+    game:GetService("Lighting").Ambient = Color3.fromRGB(r, g, b)
+end)
+addCommand({"resetambient"}, "Đặt lại màu ánh sáng mặc định", function()
+    game:GetService("Lighting").Ambient = Color3.fromRGB(0, 0, 0)
+end)
+
+
 -- ==================== SORT AND POPULATE LIST VISUALLY ====================
 local sortedList = {}
 local trackerIndex = 1
@@ -3299,20 +3844,29 @@ end
 
 -- Apply Loaded Theme and Configuration immediately on launch
 pcall(function()
-local r, g, b = currentSettings.ThemeColor:match("(%d+),%s*(%d+),%s*(%d+)")
-if r and g and b then
-   applyNewThemeColor(Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b)), true)
+if currentSettings.ThemeColor then
+    local r, g, b = currentSettings.ThemeColor:match("(%d+),%s*(%d+),%s*(%d+)")
+    if r and g and b then
+       applyNewThemeColor(Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b)), true)
+    end
 end
 
-local tr, tg, tb = currentSettings.TextColor:match("(%d+),%s*(%d+),%s*(%d+)")
-if tr and tg and tb then
-   applyNewTextColor(Color3.fromRGB(tonumber(tr), tonumber(tg), tonumber(tb)), true)
+if currentSettings.TextColor then
+    local tr, tg, tb = currentSettings.TextColor:match("(%d+),%s*(%d+),%s*(%d+)")
+    if tr and tg and tb then
+       applyNewTextColor(Color3.fromRGB(tonumber(tr), tonumber(tg), tonumber(tb)), true)
+    end
 end
 
-local op = tonumber(currentSettings.Opacity)
-if op then
-   applyOpacity(op)
+if currentSettings.Opacity then
+    local op = tonumber(currentSettings.Opacity)
+    if op then
+       applyOpacity(op)
+    end
 end
+
+applyToggleImage(currentSettings.ToggleImage or "")
+applyToggleBorder(currentSettings.ToggleBorderThickness or "2")
 end)
 
 
@@ -3328,7 +3882,7 @@ end
 
 
 -- Antikick, Antiban & Auto-Rejoin Setup
-local function triggerRejoin()
+triggerRejoin = function()
     safeWriteFile("PureCommander_AutoOpen.txt", "true")
     
     -- Setup a Custom GUI overlay on screen before self-kicking
@@ -3371,16 +3925,147 @@ local function triggerRejoin()
 end
 
 
--- Metatable Hooking for local scripts trying to kick
+-- ==================== ADVANCED CUSTOM KICK INTERCEPTOR (GUI PRE-EMPTIVE KICK) ====================
+local function showCustomKickGUI(reason)
+    reason = reason or "Không có lý do được cung cấp bởi máy chủ."
+    
+    -- Prevent duplicate screens
+    pcall(function()
+        local old = CoreGui:FindFirstChild("PureAntiKickGUI")
+        if old then old:Destroy() end
+    end)
+    
+    local KickGUI = Instance.new("ScreenGui")
+    KickGUI.Name = "PureAntiKickGUI"
+    KickGUI.ResetOnSpawn = false
+    KickGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    KickGUI.Parent = CoreGui
+    
+    local Background = Instance.new("Frame")
+    Background.Size = UDim2.new(1, 0, 1, 0)
+    Background.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    Background.BackgroundTransparency = 0.25
+    Background.Parent = KickGUI
+    
+    local Main = Instance.new("Frame")
+    Main.Size = UDim2.new(0, 480, 0, 280)
+    Main.Position = UDim2.new(0.5, -240, 0.5, -140)
+    Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+    Main.BorderSizePixel = 0
+    Main.Parent = Background
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 12)
+    Corner.Parent = Main
+    
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Thickness = 2.5
+    Stroke.Color = getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)
+    Stroke.Parent = Main
+    
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 50)
+    Title.BackgroundTransparency = 1
+    Title.Text = "🚨 HỆ THỐNG PHÁT HIỆN YÊU CẦU KICK (ĐÃ CHẶN) 🚨"
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 14
+    Title.TextColor3 = Color3.fromRGB(255, 75, 75)
+    Title.Parent = Main
+    
+    local Desc = Instance.new("TextLabel")
+    Desc.Size = UDim2.new(1, -40, 0, 110)
+    Desc.Position = UDim2.new(0, 20, 0, 60)
+    Desc.BackgroundTransparency = 1
+    Desc.Text = "Pure Anti-Kick đã đi trước game một bước và chặn yêu cầu Kick thành công!\n\nLý do Kick: " .. tostring(reason)
+    Desc.Font = Enum.Font.Gotham
+    Desc.TextSize = 13
+    Desc.TextColor3 = Color3.fromRGB(230, 230, 230)
+    Desc.TextWrapped = true
+    Desc.TextYAlignment = Enum.TextYAlignment.Top
+    Desc.Parent = Main
+    
+    local RejoinBtn = Instance.new("TextButton")
+    RejoinBtn.Size = UDim2.new(0.42, 0, 0, 40)
+    RejoinBtn.Position = UDim2.new(0.06, 0, 0.65, 15)
+    RejoinBtn.BackgroundColor3 = getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)
+    RejoinBtn.Text = "Rejoin Ngay"
+    RejoinBtn.Font = Enum.Font.GothamBold
+    RejoinBtn.TextSize = 13
+    RejoinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    RejoinBtn.Parent = Main
+    
+    local RCorner = Instance.new("UICorner")
+    RCorner.CornerRadius = UDim.new(0, 6)
+    RCorner.Parent = RejoinBtn
+    
+    local BypassBtn = Instance.new("TextButton")
+    BypassBtn.Size = UDim2.new(0.42, 0, 0, 40)
+    BypassBtn.Position = UDim2.new(0.52, 0, 0.65, 15)
+    BypassBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    BypassBtn.Text = "Bypass (Ở Lại Server)"
+    BypassBtn.Font = Enum.Font.GothamBold
+    BypassBtn.TextSize = 13
+    BypassBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    BypassBtn.Parent = Main
+    
+    local BCorner = Instance.new("UICorner")
+    BCorner.CornerRadius = UDim.new(0, 6)
+    BCorner.Parent = BypassBtn
+    
+    local TimerLbl = Instance.new("TextLabel")
+    TimerLbl.Size = UDim2.new(1, 0, 0, 20)
+    TimerLbl.Position = UDim2.new(0, 0, 0.88, 0)
+    TimerLbl.BackgroundTransparency = 1
+    TimerLbl.Text = "Tự động rejoin sau 5 giây..."
+    TimerLbl.Font = Enum.Font.Gotham
+    TimerLbl.TextSize = 11
+    TimerLbl.TextColor3 = Color3.fromRGB(150, 150, 150)
+    TimerLbl.Parent = Main
+    
+    local timer = 5
+    local counting = true
+    
+    local function executeRejoin()
+        counting = false
+        KickGUI:Destroy()
+        triggerRejoin()
+    end
+    
+    RejoinBtn.MouseButton1Click:Connect(executeRejoin)
+    
+    BypassBtn.MouseButton1Click:Connect(function()
+        counting = false
+        KickGUI:Destroy()
+        notify("Anti-Kick Bypass", "Đã chặn hoàn toàn yêu cầu Kick từ game thành công!", 4)
+    end)
+    
+    task.spawn(function()
+        while timer > 0 and counting do
+            task.wait(1)
+            timer = timer - 1
+            if counting then
+                TimerLbl.Text = "Tự động rejoin sau " .. timer .. " giây..."
+            end
+        end
+        if counting then
+            executeRejoin()
+        end
+    end)
+end
+
+
+-- Metatable Hooking for local scripts/server scripts trying to kick
 pcall(function()
     if hookmetamethod then
         local oldNamecall
         oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             local method = getnamecallmethod()
+            local args = {...}
             if self == LocalPlayer and (method == "Kick" or method == "kick") then
+                local reason = args[1] or "Không có lý do rõ ràng."
                 task.spawn(function()
-                    if InfoText then InfoText.Text = "Đang rejoin..." end
-                    triggerRejoin()
+                    if InfoText then InfoText.Text = "Đã chặn yêu cầu Kick..." end
+                    showCustomKickGUI(reason)
                 end)
                 return
             end
@@ -3392,9 +4077,11 @@ end)
 pcall(function()
     if hookfunction and LocalPlayer.Kick then
         hookfunction(LocalPlayer.Kick, function(self, ...)
+            local args = {...}
+            local reason = args[1] or "Không có lý do rõ ràng."
             task.spawn(function()
-                if InfoText then InfoText.Text = "Đang rejoin..." end
-                triggerRejoin()
+                if InfoText then InfoText.Text = "Đã chặn yêu cầu Kick..." end
+                showCustomKickGUI(reason)
             end)
             return
         end)
@@ -3408,3 +4095,6 @@ pcall(function()
         triggerRejoin()
     end)
 end)
+
+-- Parent the main ScreenGui to the CoreGui last to bypass initialization lag
+PureAdminGUI.Parent = CoreGui

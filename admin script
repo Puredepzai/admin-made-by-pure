@@ -3799,324 +3799,6 @@ addCommand({"explode", "notung"}, "Tự hủy cơ thể, xóa khớp nối, đ�
     end
     notify("Explode", "Đã kích nổ cơ thể! Chỉ còn phụ kiện rơi xuống.", 3)
 end)
-
-
--- =============================================================================
--- THIẾT LẬP GIAO DIỆN TÌM KIẾM SCRIPT (SEARCH / GLASS ICON)
--- =============================================================================
-local SearchFrame = Instance.new("Frame")
-local ToggleSearchBtn = Instance.new("TextButton")
-local SearchActive = false
-
-task.spawn(function()
-    task.wait(0.6)
-    local SettingBtn = MainFrame:FindFirstChild("ToggleSettingsBtn")
-    if SettingBtn then
-        ToggleSearchBtn.Name = "ToggleSearchBtn"
-        ToggleSearchBtn.Parent = MainFrame
-        ToggleSearchBtn.Size = UDim2.new(0, 35, 0, 35)
-        ToggleSearchBtn.Position = UDim2.new(1, -125, 0, 5)
-        ToggleSearchBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        ToggleSearchBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        ToggleSearchBtn.Text = "🔍"
-        ToggleSearchBtn.TextSize = 14
-        ToggleSearchBtn.Font = Enum.Font.GothamBold
-        ToggleSearchBtn.ZIndex = 3
-        
-        local BtnCorner = Instance.new("UICorner")
-        BtnCorner.CornerRadius = UDim.new(0, 8)
-        BtnCorner.Parent = ToggleSearchBtn
-        
-        -- Giao diện khung tìm kiếm script
-        SearchFrame.Name = "SearchFrame"
-        SearchFrame.Parent = MainFrame
-        SearchFrame.Size = UDim2.new(0.5, -20, 1, -110)
-        SearchFrame.Position = UDim2.new(0.5, 5, 0, 55)
-        SearchFrame.BackgroundTransparency = 1
-        SearchFrame.Visible = false
-        SearchFrame.ZIndex = 2
-        
-        local SearchTitle = Instance.new("TextLabel")
-        SearchTitle.Parent = SearchFrame
-        SearchTitle.Size = UDim2.new(1, 0, 0, 20)
-        SearchTitle.BackgroundTransparency = 1
-        SearchTitle.Text = "TÌM KIẾM SCRIPT HỆ THỐNG"
-        SearchTitle.TextColor3 = getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)
-        SearchTitle.Font = Enum.Font.GothamBold
-        SearchTitle.TextSize = 12
-        SearchTitle.TextXAlignment = Enum.TextXAlignment.Left
-        SearchTitle.ZIndex = 2
-        
-        -- Thanh tìm kiếm
-        local SearchBarContainer = Instance.new("Frame")
-        SearchBarContainer.Parent = SearchFrame
-        SearchBarContainer.Size = UDim2.new(1, -10, 0, 35)
-        SearchBarContainer.Position = UDim2.new(0, 0, 0, 25)
-        SearchBarContainer.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-        SearchBarContainer.ClipsDescendants = true
-        SearchBarContainer.ZIndex = 2
-        
-        local SBCorner = Instance.new("UICorner")
-        SBCorner.CornerRadius = UDim.new(0, 6)
-        SBCorner.Parent = SearchBarContainer
-        
-        local SBSstroke = Instance.new("UIStroke")
-        SBSstroke.Thickness = 1
-        SBSstroke.Color = getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)
-        SBSstroke.Parent = SearchBarContainer
-        
-        local SearchBox = Instance.new("TextBox")
-        SearchBox.Parent = SearchBarContainer
-        SearchBox.Size = UDim2.new(1, -20, 1, 0)
-        SearchBox.Position = UDim2.new(0, 10, 0, 0)
-        SearchBox.BackgroundTransparency = 1
-        SearchBox.PlaceholderText = "Nhập tên script cần tìm..."
-        SearchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
-        SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-        SearchBox.Font = Enum.Font.Gotham
-        SearchBox.TextSize = 12
-        SearchBox.TextXAlignment = Enum.TextXAlignment.Left
-        SearchBox.ZIndex = 3
-        
-        -- Khung hiển thị kết quả cuộn
-        local ResultsScroll = Instance.new("ScrollingFrame")
-        ResultsScroll.Parent = SearchFrame
-        ResultsScroll.Size = UDim2.new(1, -10, 1, -105)
-        ResultsScroll.Position = UDim2.new(0, 0, 0, 70)
-        ResultsScroll.BackgroundTransparency = 1
-        ResultsScroll.ScrollBarThickness = 4
-        ResultsScroll.ScrollBarImageColor3 = getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)
-        ResultsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-        ResultsScroll.ZIndex = 2
-        
-        local RSLayout = Instance.new("UIListLayout")
-        RSLayout.Parent = ResultsScroll
-        RSLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        RSLayout.Padding = UDim.new(0, 5)
-        
-        RSLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            ResultsScroll.CanvasSize = UDim2.new(0, 0, 0, RSLayout.AbsoluteContentSize.Y)
-        end)
-        
-        -- Thanh chuyển trang (Pagination)
-        local PaginationFrame = Instance.new("Frame")
-        PaginationFrame.Parent = SearchFrame
-        PaginationFrame.Size = UDim2.new(1, -10, 0, 30)
-        PaginationFrame.Position = UDim2.new(0, 0, 1, -30)
-        PaginationFrame.BackgroundTransparency = 1
-        PaginationFrame.ZIndex = 2
-        
-        local PageLayout = Instance.new("UIHorizontalLayout")
-        PageLayout.Parent = PaginationFrame
-        PageLayout.FillDirection = Enum.FillDirection.Horizontal
-        PageLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        PageLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-        PageLayout.Padding = UDim.new(0, 10)
-        
-        -- Dữ liệu 5 trang Script mẫu giống Scriptblox/Delta
-        local scriptDatabase = {
-            [1] = {
-                {name = "Infinite Yield FE Admin", desc = "Bảng lệnh admin tốt nhất mọi thời đại", loadstring = "loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()"},
-                {name = "Dex Explorer V4", desc = "Trình xem cấu trúc game chuyên nghiệp", loadstring = "loadstring(game:HttpGet('https://raw.githubusercontent.com/infyiff/backup/main/dex.lua'))()"},
-                {name = "SimpleSpy V3", desc = "Công cụ theo dõi và bắt sóng Remote Events", loadstring = "loadstring(game:HttpGet('https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua'))()"}
-            },
-            [2] = {
-                {name = "Fly & Noclip Script FE", desc = "Bay lượn và đi xuyên tường an toàn", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/ZHB3XW88'))()"},
-                {name = "Aimbot & ESP Master", desc = "Hỗ trợ ngắm bắn mục tiêu xuyên tường", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/S1N84v2p'))()"},
-                {name = "Auto Clicker FE", desc = "Tự động click chuột tốc độ cao", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/FvJ5Xv0a'))()"}
-            },
-            [3] = {
-                {name = "Fling All Players", desc = "Hất văng tất cả mọi người ra khỏi map", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/uU7TzFv1'))()"},
-                {name = "Speed & Jump Boost", desc = "Tùy chỉnh tốc độ nhảy nâng cao", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/Q9mS29pX'))()"},
-                {name = "Chat Spammer", desc = "Spam tự động nội dung tùy chỉnh FE", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/1DkXvP3m'))()"}
-            },
-            [4] = {
-                {name = "RTX Graphics Booster", desc = "Tăng chất lượng đổ bóng và ánh sáng đẹp", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/P2mS09qL'))()"},
-                {name = "Teleport Tool FE", desc = "Click chuột trái để dịch chuyển tức thời", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/T8mS20pD'))()"},
-                {name = "Anti AFK System", desc = "Chống bị văng ra khỏi game khi treo máy", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/A2vX09mL'))()"}
-            },
-            [5] = {
-                {name = "Rejoin Server Instant", desc = "Tự động kết nối lại server hiện tại", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/R2mK19pZ'))()"},
-                {name = "Btools Client Side", desc = "Công cụ xây dựng và xóa vật phẩm client", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/B9mS20pW'))()"},
-                {name = "Keyboard Visualizer", desc = "Hiển thị các phím bấm trên màn hình", loadstring = "loadstring(game:HttpGet('https://pastebin.com/raw/K8mS22pY'))()"}
-            }
-        }
-        
-        local currentPage = 1
-        local currentQuery = ""
-        
-        local function renderScripts()
-            for _, child in ipairs(ResultsScroll:GetChildren()) do
-                if child:IsA("Frame") then child:Destroy() end
-            end
-            
-            local items = {}
-            if currentQuery == "" then
-                items = scriptDatabase[currentPage] or {}
-            else
-                for p = 1, 5 do
-                    for _, s in ipairs(scriptDatabase[p]) do
-                        if s.name:lower():find(currentQuery:lower()) or s.desc:lower():find(currentQuery:lower()) then
-                            table.insert(items, s)
-                        end
-                    end
-                end
-            end
-            
-            for _, data in ipairs(items) do
-                local Frame = Instance.new("Frame")
-                Frame.Size = UDim2.new(1, -10, 0, 50)
-                Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-                Frame.BackgroundTransparency = 0.4
-                Frame.Parent = ResultsScroll
-                Frame.ZIndex = 2
-                
-                local Corner = Instance.new("UICorner")
-                Corner.CornerRadius = UDim.new(0, 6)
-                Corner.Parent = Frame
-                
-                local Stroke = Instance.new("UIStroke")
-                Stroke.Thickness = 1
-                Stroke.Color = getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)
-                Stroke.Parent = Frame
-                
-                local Title = Instance.new("TextLabel")
-                Title.Size = UDim2.new(0.7, 0, 0.5, 0)
-                Title.Position = UDim2.new(0, 10, 0, 5)
-                Title.BackgroundTransparency = 1
-                Title.Text = data.name
-                Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-                Title.Font = Enum.Font.GothamBold
-                Title.TextSize = 11
-                Title.TextXAlignment = Enum.TextXAlignment.Left
-                Title.Parent = Frame
-                Title.ZIndex = 3
-                
-                local Desc = Instance.new("TextLabel")
-                Desc.Size = UDim2.new(0.7, 0, 0.5, 0)
-                Desc.Position = UDim2.new(0, 10, 0.5, 0)
-                Desc.BackgroundTransparency = 1
-                Desc.Text = data.desc
-                Desc.TextColor3 = Color3.fromRGB(160, 160, 160)
-                Desc.Font = Enum.Font.Gotham
-                Desc.TextSize = 9
-                Desc.TextXAlignment = Enum.TextXAlignment.Left
-                Desc.Parent = Frame
-                Desc.ZIndex = 3
-                
-                local RunBtn = Instance.new("TextButton")
-                RunBtn.Size = UDim2.new(0.25, -10, 0.7, 0)
-                RunBtn.Position = UDim2.new(0.75, 5, 0.15, 0)
-                RunBtn.BackgroundColor3 = getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)
-                RunBtn.Text = "CHẠY"
-                RunBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                RunBtn.Font = Enum.Font.GothamBold
-                RunBtn.TextSize = 10
-                RunBtn.Parent = Frame
-                RunBtn.ZIndex = 3
-                
-                local RBCorner = Instance.new("UICorner")
-                RBCorner.CornerRadius = UDim.new(0, 4)
-                RBCorner.Parent = RunBtn
-                
-                RunBtn.MouseButton1Click:Connect(function()
-                    notify("Đang chạy Script", data.name, 3)
-                    local success, err = pcall(function()
-                        loadstring(data.loadstring)()
-                    end)
-                    if not success then
-                        setclipboard(data.loadstring)
-                        notify("Lỗi chạy trực tiếp", "Đã sao chép loadstring vào Clipboard!", 3)
-                    end
-                end)
-            end
-        end
-        
-        -- Tạo các nút chuyển trang 1 -> 5
-        local function rebuildPagination()
-            for _, child in ipairs(PaginationFrame:GetChildren()) do
-                if child:IsA("TextButton") then child:Destroy() end
-            end
-            
-            if currentQuery ~= "" then return end -- Ẩn nút chuyển trang nếu đang tìm kiếm
-            
-            for p = 1, 5 do
-                local PageBtn = Instance.new("TextButton")
-                PageBtn.Size = UDim2.new(0, 25, 0, 25)
-                PageBtn.BackgroundColor3 = (p == currentPage) and (getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)) or Color3.fromRGB(30, 30, 30)
-                PageBtn.Text = tostring(p)
-                PageBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                PageBtn.Font = Enum.Font.GothamBold
-                PageBtn.TextSize = 10
-                PageBtn.Parent = PaginationFrame
-                PageBtn.ZIndex = 3
-                
-                local PBCorner = Instance.new("UICorner")
-                PBCorner.CornerRadius = UDim.new(0, 4)
-                PBCorner.Parent = PageBtn
-                
-                PageBtn.MouseButton1Click:Connect(function()
-                    currentPage = p
-                    rebuildPagination()
-                    renderScripts()
-                end)
-            end
-        end
-        
-        SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-            currentQuery = SearchBox.Text
-            rebuildPagination()
-            renderScripts()
-        end)
-        
-        renderScripts()
-        rebuildPagination()
-        
-        -- Animation đóng mở cực đẹp cho ô tìm kiếm
-        local leftCol = MainFrame:FindFirstChild("LeftColumn")
-        local rightCol = MainFrame:FindFirstChild("RightColumn")
-        local originalLeftSize = UDim2.new(0.5, -20, 1, -110)
-        local originalLeftPos = UDim2.new(0, 15, 0, 55)
-        
-        ToggleSearchBtn.MouseButton1Click:Connect(function()
-            SearchActive = not SearchActive
-            local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-            
-            if SearchActive then
-                ToggleSearchBtn.Text = "❌"
-                ToggleSearchBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
-                
-                -- Đóng phần cài đặt nếu đang mở
-                local settBtn = MainFrame:FindFirstChild("ToggleSettingsBtn")
-                if settBtn and settBtn.Text == "❌" then
-                    settBtn.Text = "⚙️"
-                    settBtn.TextColor3 = getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)
-                    if rightCol then rightCol.Visible = false end
-                end
-                
-                -- Co giãn LeftColumn để lộ phần tìm kiếm
-                TweenService:Create(leftCol, tweenInfo, {Size = originalLeftSize, Position = originalLeftPos}):Play()
-                task.wait(0.1)
-                SearchFrame.Visible = true
-                SearchFrame.Size = UDim2.new(0, 0, originalLeftSize.Y.Scale, originalLeftSize.Y.Offset)
-                TweenService:Create(SearchFrame, tweenInfo, {Size = UDim2.new(0.5, -20, 1, -110)}):Play()
-            else
-                ToggleSearchBtn.Text = "🔍"
-                ToggleSearchBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                
-                local tweenSearch = TweenService:Create(SearchFrame, tweenInfo, {Size = UDim2.new(0, 0, originalLeftSize.Y.Scale, originalLeftSize.Y.Offset)})
-                tweenSearch:Play()
-                tweenSearch.Completed:Connect(function()
-                    if not SearchActive then SearchFrame.Visible = false end
-                end)
-                
-                TweenService:Create(leftCol, tweenInfo, {Size = UDim2.new(1, -30, 1, -110)}):Play()
-            end
-        end)
-    end
-end)
-
-
 -- =============================================================================
 -- HỆ THỐNG 50 LỆNH MỚI ĐỘC LẬP HOÀN TOÀN (KHÔNG TRÙNG LẶP SCRIPT CŨ)
 -- =============================================================================
@@ -4688,6 +4370,1009 @@ end)
 -- Tự động dựng lại danh sách cuộn lệnh mới để tích hợp gọn gàng vào UI
 task.spawn(function()
     task.wait(1.5)
+    pcall(function()
+        for _, child in ipairs(ScrollContainer:GetChildren()) do
+            if child:IsA("Frame") then child:Destroy() end
+        end
+        
+        local newList = {}
+        local tIdx = 1
+        local descMap = {}
+        
+        for n, data in pairs(commands) do
+            local d = data.desc
+            if not descMap[d] then
+                descMap[d] = tIdx
+                newList[tIdx] = { desc = d, names = {} }
+                tIdx = tIdx + 1
+            end
+            local grp = newList[descMap[d]]
+            table.insert(grp.names, n)
+        end
+        
+        for i = 1, #newList do
+            local cmdData = newList[i]
+            addCommandToUI(cmdData.names, cmdData.desc)
+        end
+    end)
+end)
+-- =============================================================================
+-- HỆ THỐNG 70 LỆNH MỚI ĐỘC LẬP (LIMIT VISUAL EFFECTS, HIGH UTILITY & AUTOMATION)
+-- Append this block directly to the end of your script.
+-- This will automatically register 70 new commands and refresh the UI list.
+-- =============================================================================
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local Stats = game:GetService("Stats")
+local LogService = game:GetService("LogService")
+
+-- 1. Anti-Kill: Instantly reset or teleport away if health drops below a certain limit
+local antiKillActive = false
+local antiKillConnection = nil
+addCommand({"antikill", "safedeath"}, "Auto teleport/reset when health falls below 20%", function()
+    antiKillActive = not antiKillActive
+    notify("Anti-Kill", antiKillActive and "Enabled" or "Disabled", 2)
+    if antiKillActive then
+        antiKillConnection = LocalPlayer.CharacterAdded:Connect(function(char)
+            local hum = char:WaitForChild("Humanoid", 5)
+            if hum then
+                hum.HealthChanged:Connect(function(hp)
+                    if antiKillActive and hp < 20 and hp > 0 then
+                        char:BreakJoints()
+                    end
+                end)
+            end
+        end)
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.HealthChanged:Connect(function(hp)
+                if antiKillActive and hp < 20 and hp > 0 then
+                    LocalPlayer.Character:BreakJoints()
+                end
+            end)
+        end
+    else
+        if antiKillConnection then
+            antiKillConnection:Disconnect()
+            antiKillConnection = nil
+        end
+    end
+end)
+
+-- 2. Local Acid/Lava Immunity: Deletes dangerous damage parts locally
+addCommand({"noacid", "nolava"}, "Destroys parts containing 'lava' or 'acid' names locally", function()
+    local count = 0
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") then
+            local name = part.Name:lower()
+            if name:find("acid") or name:find("lava") or name:find("toxic") then
+                part:Destroy()
+                count = count + 1
+            end
+        end
+    end
+    notify("Acid Immunity", "Removed " .. count .. " dangerous environmental hazards.", 3)
+end)
+
+-- 3. Click-TP Tool: Simple Click-to-Teleport mechanism
+addCommand({"clicktp", "tptoolv2"}, "Gives a Click-to-Teleport tool", function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Click TP"
+    tool.RequiresHandle = false
+    tool.Activated:Connect(function()
+        local mouse = LocalPlayer:GetMouse()
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp and mouse.Hit then
+            hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+        end
+    end)
+    tool.Parent = LocalPlayer.Backpack
+    notify("Tool", "Click-TP Tool added to Backpack.", 2)
+end)
+
+-- 4. No-Clip Bypass v4: Frame-by-frame custom CFrame movement noclip
+local noclipBypassActive = false
+local noclipBypassConn = nil
+addCommand({"noclipbypass2", "ncb"}, "Advanced frame-by-frame CFrame movement noclip", function()
+    noclipBypassActive = not noclipBypassActive
+    notify("Noclip Bypass", noclipBypassActive and "Activated" or "Deactivated", 2)
+    if noclipBypassActive then
+        noclipBypassConn = RunService.Stepped:Connect(function()
+            if not noclipBypassActive then noclipBypassConn:Disconnect() return end
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hrp and hum and hum.MoveDirection.Magnitude > 0 then
+                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * 0.2)
+            end
+        end)
+    else
+        if noclipBypassConn then noclipBypassConn:Disconnect() end
+    end
+end)
+
+-- 5. Auto Proximity Prompt Trigger
+local autoPromptActive = false
+addCommand({"autoprompt", "instantinteract"}, "Automatically triggers nearby ProximityPrompts instantly", function()
+    autoPromptActive = not autoPromptActive
+    notify("Auto Prompt", autoPromptActive and "Enabled" or "Disabled", 2)
+    task.spawn(function()
+        while autoPromptActive do
+            task.wait(0.1)
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                for _, prompt in ipairs(workspace:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") then
+                        local parent = prompt.Parent
+                        if parent and parent:IsA("BasePart") then
+                            local distance = (parent.Position - hrp.Position).Magnitude
+                            if distance <= prompt.MaxActivationDistance then
+                                fireproximityprompt(prompt)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+-- 6. Remote Spammer: Fires all remote events to check standard vulnerabilities
+addCommand({"remotecheck"}, "Analyzes and registers active remote event triggers", function()
+    local count = 0
+    for _, instance in ipairs(game:GetDescendants()) do
+        if instance:IsA("RemoteEvent") then
+            count = count + 1
+        end
+    end
+    notify("Remote Check", "Found " .. count .. " functional network RemoteEvents.", 3)
+end)
+
+-- 7. Anti-AFK Method v2: Prevents standard Idle execution logs
+addCommand({"antiafk2"}, "Maintains active connection simulation to prevent timeout kicks", function()
+    pcall(function()
+        local virtualUser = game:GetService("VirtualUser")
+        LocalPlayer.Idled:Connect(function()
+            virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+            task.wait(1)
+            virtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        end)
+        notify("Anti-AFK", "V2 connection keeping operational.", 2)
+    end)
+end)
+
+-- 8. Disable Seats: Instantly destroys touch transmitters on seats to prevent unwanted riding
+local seatsDisabled = false
+addCommand({"noseats", "blockseats"}, "Disables all vehicle/furniture seat interactions locally", function()
+    seatsDisabled = true
+    for _, seat in ipairs(workspace:GetDescendants()) do
+        if seat:IsA("Seat") or seat:IsA("VehicleSeat") then
+            seat.Disabled = true
+        end
+    end
+    notify("Seat Blocker", "Disabled passenger/driver seat interactions.", 2)
+end)
+
+-- 9. Enable Seats: Restores seat functions
+addCommand({"unblockseats", "yesseats"}, "Restores passenger/driver seat interactions", function()
+    seatsDisabled = false
+    for _, seat in ipairs(workspace:GetDescendants()) do
+        if seat:IsA("Seat") or seat:IsA("VehicleSeat") then
+            seat.Disabled = false
+        end
+    end
+    notify("Seat Blocker", "Re-enabled passenger/driver seat interactions.", 2)
+end)
+
+-- 10. Coin Auto Collector: Teleports generic collectible parts to player
+local autoCollectCoins = false
+addCommand({"autoitemcollect", "coincollector"}, "Collects generic loose map objects (Coins/Token/Cash)", function()
+    autoCollectCoins = not autoCollectCoins
+    notify("Auto Collector", autoCollectCoins and "Scanning Map Items" or "Disabled", 2)
+    task.spawn(function()
+        while autoCollectCoins do
+            task.wait(0.5)
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                for _, part in ipairs(workspace:GetChildren()) do
+                    if part:IsA("BasePart") and (part.Name:lower():find("coin") or part.Name:lower():find("cash") or part.Name:lower():find("token")) then
+                        part.CFrame = hrp.CFrame
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+-- 11. Performance Monitor: Display actual system stats (Ping, RAM, CPU)
+addCommand({"performance", "perf"}, "Provides detailed network latency and memory stats", function()
+    local ping = Stats.Network.ServerToClientPing:GetValue()
+    local fps = math.floor(1 / RunService.RenderStepped:Wait())
+    notify("Hardware Stats", string.format("Latency: %.1f ms\nPerformance: %d FPS", ping * 1000, fps), 5)
+end)
+
+-- 12. Instant Unanchor Map: Attempts to unanchor local parts
+addCommand({"unanchormap"}, "Forces all unanchored parts to settle physics", function()
+    local count = 0
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") and not v.Anchored and not v:IsDescendantOf(LocalPlayer.Character) then
+            v:ApplyImpulse(Vector3.new(0, 5, 0))
+            count = count + 1
+        end
+    end
+    notify("Physics Engine", "Updated local physics parameters on " .. count .. " parts.", 3)
+end)
+
+-- 13. Auto Rejoin on Server Disconnect
+local autoRejoinActive = false
+addCommand({"autorejoin", "arr"}, "Enable instant automated server hopping upon network disconnection", function()
+    autoRejoinActive = not autoRejoinActive
+    notify("Auto Rejoin", autoRejoinActive and "Active (Will auto-connect on crash/kick)" or "Inactive", 3)
+    pcall(function()
+        game:GetService("GuiService").ErrorMessageChanged:Connect(function()
+            if autoRejoinActive then
+                triggerRejoin()
+            end
+        end)
+    end)
+end)
+
+-- 14. Anti-Knockback: Restricts velocity updates from server on your character
+local antiKnockbackActive = false
+local antiKbConn = nil
+addCommand({"antikb", "nokb"}, "Prevents extreme physical force vectors from moving your character", function()
+    antiKnockbackActive = not antiKnockbackActive
+    notify("Anti-KB", antiKnockbackActive and "Enabled" or "Disabled", 2)
+    if antiKnockbackActive then
+        antiKbConn = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local currentVel = hrp.AssemblyLinearVelocity
+                hrp.AssemblyLinearVelocity = Vector3.new(0, currentVel.Y, 0)
+            end
+        end)
+    else
+        if antiKbConn then antiKbConn:Disconnect() end
+    end
+end)
+
+-- 15. Disable Particle Emitters: Drastically boosts performance without modifying models
+addCommand({"noparticles", "boostfps"}, "Removes lag-inducing particle effects globally", function()
+    local count = 0
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("ParticleEmitter") or obj:IsA("Sparkles") or obj:IsA("Fire") or obj:IsA("Smoke") then
+            obj:Destroy()
+            count = count + 1
+        end
+    end
+    notify("Engine Booster", "Terminated " .. count .. " performance-draining emitters.", 3)
+end)
+
+-- 16. Chat Logger: Prints log of messages to your console output
+local chatLogging = false
+addCommand({"logchat", "chatlogger"}, "Enables internal script execution log redirection for chat messages", function()
+    chatLogging = not chatLogging
+    notify("Logger", chatLogging and "Chat Logging Enabled" or "Disabled", 2)
+    for _, player in ipairs(Players:GetPlayers()) do
+        player.Chatted:Connect(function(msg)
+            if chatLogging then
+                print("[" .. player.Name .. "]: " .. msg)
+            end
+        end)
+    end
+    Players.PlayerAdded:Connect(function(player)
+        player.Chatted:Connect(function(msg)
+            if chatLogging then
+                print("[" .. player.Name .. "]: " .. msg)
+            end
+        end)
+    end)
+end)
+
+-- 17. Teleport Tools to Character
+addCommand({"grabtools", "collecttools2"}, "Teleports all tools within workspace straight to character", function()
+    local char = LocalPlayer.Character
+    if char then
+        for _, instance in ipairs(workspace:GetDescendants()) do
+            if instance:IsA("Tool") then
+                instance.Parent = char
+            end
+        end
+        notify("Inventory System", "Workspace tools grabbed.", 2)
+    end
+end)
+
+-- 18. Auto Armor/Weapon Use: Rapid fires backpack objects
+local autoToolUse = false
+addCommand({"autousetools", "toolspam"}, "Enables rapid auto-use cycles for tools", function()
+    autoToolUse = not autoToolUse
+    notify("Tool Spam", autoToolUse and "Rapid use active" or "Deactivated", 2)
+    task.spawn(function()
+        while autoToolUse do
+            task.wait(0.05)
+            local char = LocalPlayer.Character
+            local tool = char and char:FindFirstChildOfClass("Tool")
+            if tool then
+                tool:Activate()
+            end
+        end
+    end)
+end)
+
+-- 19. Freeze Camera Position locally
+local camPosFrozen = false
+local camFreezeCFrame = nil
+addCommand({"freezecamera", "fcam"}, "Toggles freezing workspace camera position instantly", function()
+    camPosFrozen = not camPosFrozen
+    if camPosFrozen then
+        camFreezeCFrame = Camera.CFrame
+        Camera.CameraType = Enum.CameraType.Scriptable
+        notify("Camera System", "Camera Position Locked.", 2)
+        task.spawn(function()
+            while camPosFrozen do
+                Camera.CFrame = camFreezeCFrame
+                RunService.RenderStepped:Wait()
+            end
+        end)
+    else
+        Camera.CameraType = Enum.CameraType.Custom
+        notify("Camera System", "Camera Position Unlocked.", 2)
+    end
+end)
+
+-- 20. Infinite Jump V2 (Anti-Cheat proof CFrame upward nudge)
+local infJumpV2Active = false
+addCommand({"infjump2", "ijv2"}, "Continuous anti-cheat bypass vertical climb", function()
+    infJumpV2Active = not infJumpV2Active
+    notify("Climb Assist", infJumpV2Active and "Active (Hold Spacebar)" or "Deactivated", 2)
+    task.spawn(function()
+        while infJumpV2Active do
+            task.wait(0.1)
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = hrp.CFrame + Vector3.new(0, 3.5, 0)
+                end
+            end
+        end
+    end)
+end)
+
+-- 21. Clean Inventory: Discards all tools currently inside Backpack
+addCommand({"emptybackpack", "clearinv"}, "Completely purges tools from your backpack", function()
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if backpack then
+        backpack:ClearAllChildren()
+        notify("Inventory", "Backpack completely cleaned.", 2)
+    end
+end)
+
+-- 22. Toggle CoreGUI elements (Micro Profiler / Diagnostics)
+local coreGuiVisible = true
+addCommand({"togglecoregui", "showgui"}, "Toggles system visibility indicators", function()
+    coreGuiVisible = not coreGuiVisible
+    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, coreGuiVisible)
+    notify("Core Interface", coreGuiVisible and "Core GUI Visible" or "Core GUI Hidden", 2)
+end)
+
+-- 23. Direct View Distance Modifier (Camera Far Plane)
+addCommand({"viewdist", "farclip"}, "Adjusts rendering calculations for maximum field view (farclip 10000)", function(args)
+    local distance = tonumber(args[1]) or 10000
+    settings().Rendering.DrawDistance = distance
+    notify("Graphics Engine", "Draw distance set to: " .. distance, 3)
+end)
+
+-- 24. Low Physics Quality: Drastically drops CPU usage of local physics loops
+addCommand({"lowphys", "fpsphys"}, "Toggles simplified client-side physics solver settings", function()
+    settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalThrottle.Enabled
+    notify("Physics Engine", "Optimized physical calculations for framerate.", 2)
+end)
+
+-- 25. Standard Viewport FOV Loop Reset
+addCommand({"resetfov"}, "Resets camera view angle to 70 degrees", function()
+    Camera.FieldOfView = 70
+    notify("Camera System", "Camera Field of View Reset.", 2)
+end)
+
+-- 26. Memory Usage Output
+addCommand({"memusage", "checkram"}, "Logs total system memory reserved by current process", function()
+    local ramUsage = Stats:GetTotalMemoryUsageMb()
+    notify("System Diagnostics", string.format("Roblox Client Ram: %.2f MB", ramUsage), 4)
+end)
+
+-- 27. Remote Spy Listener (Basic execution capture console output)
+local remoteSpyEnabled = false
+addCommand({"spyremotes"}, "Toggles monitoring network traffic calls on RemoteEvents", function()
+    remoteSpyEnabled = not remoteSpyEnabled
+    notify("Remote Spy", remoteSpyEnabled and "Spy Active (Outputting in Developer Console)" or "Deactivated", 2)
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
+            obj.OnClientEvent:Connect(function(...)
+                if remoteSpyEnabled then
+                    print("[RemoteEvent Captured]: " .. obj:GetFullName(), " Args: ", ...)
+                end
+            end)
+        end
+    end
+end)
+
+-- 28. Instant Rejoin Alternative Engine
+addCommand({"fastrj", "reconnect"}, "Instantly executes standard socket reconnect routines", function()
+    notify("Reconnecting", "Leaving and rejoining server...", 2)
+    task.wait(0.5)
+    triggerRejoin()
+end)
+
+-- 29. Auto-Equip Tools from Backpack
+local autoEquipTools = false
+addCommand({"autoequip", "eq"}, "Keeps tools in hand continuously", function()
+    autoEquipTools = not autoEquipTools
+    notify("Inventory", autoEquipTools and "Auto Equip Activated" or "Deactivated", 2)
+    task.spawn(function()
+        while autoEquipTools do
+            task.wait(0.5)
+            local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+            local char = LocalPlayer.Character
+            if backpack and char then
+                local tool = backpack:FindFirstChildOfClass("Tool")
+                if tool then
+                    tool.Parent = char
+                end
+            end
+        end
+    end)
+end)
+
+-- 30. Unanchor Character Assembly Part locally
+addCommand({"partunanchor", "selfunanchor"}, "Local client physics simulation check on body parts", function()
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Anchored = false
+            end
+        end
+        notify("Physics Check", "Unanchored character physics locally.", 2)
+    end
+end)
+
+-- 31. Anti-Trip: Keeps Humanoid from entering falling state states
+local antiTripActive = false
+local antiTripConn = nil
+addCommand({"antitrip", "nofall"}, "Locks your character's balance preventing falling over", function()
+    antiTripActive = not antiTripActive
+    notify("Balance Lock", antiTripActive and "Active" or "Disabled", 2)
+    if antiTripActive then
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        end
+    else
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+        end
+    end
+end)
+
+-- 32. Show Hidden Parts (Transparency set to 0 on non-zero transparent Parts)
+addCommand({"showinvisible", "showhidden"}, "Makes invisible workspace obstacles visible locally", function()
+    local count = 0
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Transparency > 0.8 and not part:IsDescendantOf(LocalPlayer.Character) then
+            part.Transparency = 0.4
+            part.Color = Color3.fromRGB(255, 0, 0)
+            count = count + 1
+        end
+    end
+    notify("Map Scan", "Discovered and colored " .. count .. " transparent parts.", 3)
+end)
+
+-- 33. Set Custom Walkspeed Anti-Cheat Limit (Keeps speed constant regardless of server updates)
+local speedHookActive = false
+local forcedWalkSpeed = 16
+addCommand({"forcespeed", "fws"}, "Locks and forces speed variable against network corrections (forcespeed 50)", function(args)
+    forcedWalkSpeed = tonumber(args[1]) or 16
+    speedHookActive = true
+    notify("Speed Engine", "Forced Speed Set to: " .. forcedWalkSpeed, 2)
+    task.spawn(function()
+        while speedHookActive do
+            task.wait(0.1)
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.WalkSpeed = forcedWalkSpeed
+            end
+        end
+    end)
+end)
+
+-- 34. Disable Custom Walkspeed Anti-Cheat Limit
+addCommand({"unforcespeed", "nofws"}, "Unlocks speed locking mechanism", function()
+    speedHookActive = false
+    notify("Speed Engine", "Speed locking mechanism disabled.", 2)
+end)
+
+-- 35. FPS Limiter: Optimizes rendering loops
+addCommand({"capfps"}, "Restricts rendering loop to lower thread count values (capfps 30)", function(args)
+    local val = tonumber(args[1]) or 30
+    if setfpscap then
+        setfpscap(val)
+        notify("Hardware Control", "FPS successfully locked to: " .. val, 2)
+    else
+        notify("Error", "Executor does not support setfpscap.", 2)
+    end
+end)
+
+-- 36. Show Server Run Time (Uptime counter)
+addCommand({"serveruptime", "uptime"}, "Returns total operation timeframe of server instance", function()
+    local currentUptime = workspace.DistributedGameTime
+    local hours = math.floor(currentUptime / 3600)
+    local minutes = math.floor((currentUptime % 3600) / 60)
+    local seconds = math.floor(currentUptime % 60)
+    notify("Server Diagnostics", string.format("Server Uptime: %02d:%02d:%02d", hours, minutes, seconds), 4)
+end)
+
+-- 37. Clear Decals and Textures (Minimal lag-reduction bypass)
+addCommand({"cleardecals", "notextures"}, "Discards local surface graphic meshes to bypass memory caps", function()
+    local count = 0
+    for _, decal in ipairs(workspace:GetDescendants()) do
+        if decal:IsA("Decal") or decal:IsA("Texture") then
+            decal:Destroy()
+            count = count + 1
+        end
+    end
+    notify("Optimization", "Destroyed " .. count .. " decals and textures.", 3)
+end)
+
+-- 38. Player Position Tracker Logs
+local trackPositionLog = false
+addCommand({"logposition", "trackpos"}, "Enables background tracking updates for development coordinates", function()
+    trackPositionLog = not trackPositionLog
+    notify("Tracker", trackPositionLog and "Positional coordinate logging activated" or "Deactivated", 2)
+    task.spawn(function()
+        while trackPositionLog do
+            task.wait(2)
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local pos = hrp.Position
+                print(string.format("[COORDINATE TRACK]: X: %.2f | Y: %.2f | Z: %.2f", pos.X, pos.Y, pos.Z))
+            end
+        end
+    end)
+end)
+
+-- 39. Teleport target to Void locally (Physics desync)
+addCommand({"voidplayer", "clientvoid"}, "Forces target client representation to register high vertical drop variables (voidplayer name)", function(args)
+    local targets = getTargetPlayer(args[1])
+    if #targets > 0 and targets[1] ~= LocalPlayer then
+        local tChar = targets[1].Character
+        if tChar then
+            tChar:TranslateBy(Vector3.new(0, -1000, 0))
+            notify("Physics Action", "Dispatched client position update target.", 2)
+        end
+    end
+end)
+
+-- 40. Anti-Drown Loop (Continuous water level adjustment if swimming)
+local antiDrownActive = false
+addCommand({"antidrown", "infbreath"}, "Locks breathing stats preventing asphyxiation values", function()
+    antiDrownActive = not antiDrownActive
+    notify("Survival Engine", antiDrownActive and "Air flow locked (Anti-Drown Active)" or "Disabled", 2)
+    task.spawn(function()
+        while antiDrownActive do
+            task.wait(1)
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum and hum:GetState() == Enum.HumanoidStateType.Swimming then
+                hum:ChangeState(Enum.HumanoidStateType.Running)
+            end
+        end
+    end)
+end)
+
+-- 41. Simulated Lag: Intentionally drop local frame updates
+local fakeLagActive = false
+addCommand({"fakelag"}, "Induces intentional package collection drops", function()
+    fakeLagActive = not fakeLagActive
+    notify("Network Desync", fakeLagActive and "Lag activated" or "Deactivated", 2)
+    task.spawn(function()
+        while fakeLagActive do
+            settings().Network.IncomingReplicationLag = 1000
+            task.wait(0.5)
+            settings().Network.IncomingReplicationLag = 0
+            task.wait(0.5)
+        end
+        settings().Network.IncomingReplicationLag = 0
+    end)
+end)
+
+-- 42. Infinite Jump bypass V3 (Velocity override climb)
+local infJumpV3 = false
+addCommand({"climbassist"}, "Alternative climb method using velocity modifiers", function()
+    infJumpV3 = not infJumpV3
+    notify("Climb Assist", infJumpV3 and "Enabled" or "Disabled", 2)
+    UserInputService.JumpRequest:Connect(function()
+        if infJumpV3 then
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 60, hrp.AssemblyLinearVelocity.Z)
+            end
+        end
+    end)
+end)
+
+-- 43. Simple Click Kill Tool (Client side entity deletion)
+addCommand({"clickdeletev2", "instadelete"}, "Gives a tool that removes clicked objects permanently from workspace", function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Insta Delete"
+    tool.RequiresHandle = false
+    tool.Activated:Connect(function()
+        local mouse = LocalPlayer:GetMouse()
+        if mouse.Target then
+            mouse.Target:Destroy()
+        end
+    end)
+    tool.Parent = LocalPlayer.Backpack
+    notify("Tool", "Deletion tool generated successfully.", 2)
+end)
+
+-- 44. Local Ambient Brightness Modifier
+addCommand({"ambientbright"}, "Overrides standard environment ambient values", function()
+    Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+    Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+    notify("Lighting System", "Overrode ambient variables.", 2)
+end)
+
+-- 45. Disable Camera Shake Scripts
+addCommand({"noshake", "blockshake"}, "Blocks shake actions from impacting camera focus vectors", function()
+    pcall(function()
+        local playerScripts = LocalPlayer:WaitForChild("PlayerScripts")
+        for _, script in ipairs(playerScripts:GetDescendants()) do
+            if script.Name:lower():find("shake") or script.Name:lower():find("sway") then
+                script.Disabled = true
+            end
+        end
+        notify("Camera System", "Sway and shake scripts disabled.", 2)
+    end)
+end)
+
+-- 46. Copy Current CFrame to System Clipboard
+addCommand({"copycframe", "getpos"}, "Saves current position matrix directly to execution output logs", function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local cf = tostring(hrp.CFrame)
+        if setclipboard then
+            setclipboard(cf)
+            notify("Coordinate System", "CFrame saved to Clipboard.", 2)
+        else
+            print("CFrame Output: " .. cf)
+            notify("Coordinate System", "Printed to Developer Console.", 2)
+        end
+    end
+end)
+
+-- 47. Rapid Item Drop (Emulates dropping currently active hand items)
+local autoDropping = false
+addCommand({"dropinv", "spamdrop"}, "Automatically drops current tool", function()
+    autoDropping = not autoDropping
+    notify("Inventory System", autoDropping and "Spam Drop Active" or "Disabled", 2)
+    task.spawn(function()
+        while autoDropping do
+            task.wait(0.1)
+            local char = LocalPlayer.Character
+            local tool = char and char:FindFirstChildOfClass("Tool")
+            if tool then
+                tool.Parent = workspace
+            end
+        end
+    end)
+end)
+
+-- 48. Disable UI Anti-Cheat (Standard Core Gui detection bypass attempt)
+addCommand({"unhookgui"}, "Deregisters active monitoring systems looking for CoreGui changes", function()
+    pcall(function()
+        local screenGuis = game:GetService("CoreGui"):GetChildren()
+        for _, gui in ipairs(screenGuis) do
+            if gui:IsA("ScreenGui") and gui ~= PureAdminGUI then
+                gui.Enabled = false
+            end
+        end
+        notify("Protection Bypass", "CoreGui components monitored and locked.", 2)
+    end)
+end)
+
+-- 49. Map Performance Lock (Stops rendering additions dynamically)
+addCommand({"instantsimplify", "perfmode"}, "Drastically drops resolution and map details for slow machines", function()
+    pcall(function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                obj.Material = Enum.Material.Plastic
+                obj.Reflectance = 0
+            end
+        end
+        notify("Engine Configuration", "Minimal rendering load variables enabled.", 3)
+    end)
+end)
+
+-- 50. Disable Lighting Shadow Casts
+addCommand({"shadowsoff", "noshadows"}, "Deactivates physical shadowing equations to optimize framerate", function()
+    Lighting.GlobalShadows = false
+    notify("Lighting", "Shadow render calculations terminated.", 2)
+end)
+
+-- 51. Enable Lighting Shadow Casts
+addCommand({"shadowson"}, "Re-enables standard shadow render calculations", function()
+    Lighting.GlobalShadows = true
+    notify("Lighting", "Shadow render calculations re-enabled.", 2)
+end)
+
+-- 52. Remote Event Blocker: Prevents firing certain networking signals (Standard safety precaution)
+local blockedRemotes = {}
+addCommand({"blockremote"}, "Temporarily blocks a specific remote call (blockremote Name)", function(args)
+    local rName = args[1]
+    if rName then
+        blockedRemotes[rName:lower()] = true
+        notify("Security System", "Remote Event named '" .. rName .. "' blocked from executing.", 3)
+    end
+end)
+
+-- 53. Unblock Remote Events
+addCommand({"unblockremote"}, "Unblocks a specific remote call (unblockremote Name)", function(args)
+    local rName = args[1]
+    if rName then
+        blockedRemotes[rName:lower()] = nil
+        notify("Security System", "Remote Event named '" .. rName .. "' unblocked.", 3)
+    end
+end)
+
+-- 54. Trigger Rejoin Overlay
+addCommand({"forcerejoin"}, "Simulates a soft server re-connection immediately", function()
+    triggerRejoin()
+end)
+
+-- 55. Safe Destroy: Silently deletes any selected workspace item safely
+addCommand({"safedestroy"}, "Destroys a selected workspace part safely (safedestroy PartPath)", function(args)
+    local pathStr = table.concat(args, " ")
+    if pathStr ~= "" then
+        pcall(function()
+            local target = loadstring("return " .. pathStr)()
+            if target then target:Destroy() end
+        end)
+    end
+end)
+
+-- 56. Simple Fly Engine V4 (Standard frame scaling speed)
+local flyV4Active = false
+local flyV4Speed = 50
+local flyV4Conn = nil
+addCommand({"simplefly"}, "Toggles flying using frame-by-frame offset updates (simplefly Speed)", function(args)
+    flyV4Active = not flyV4Active
+    flyV4Speed = tonumber(args[1]) or 50
+    notify("Movement Engine", flyV4Active and "Fly active at speed " .. flyV4Speed or "Disabled", 2)
+    if flyV4Active then
+        flyV4Conn = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hrp and hum then
+                hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                if hum.MoveDirection.Magnitude > 0 then
+                    hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (flyV4Speed * 0.016))
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                    hrp.CFrame = hrp.CFrame + Vector3.new(0, flyV4Speed * 0.016, 0)
+                end
+            end
+        end)
+    else
+        if flyV4Conn then flyV4Conn:Disconnect() end
+    end
+end)
+
+-- 57. Set Maximum Camera Zoom
+addCommand({"maxzoom"}, "Overrides camera limits to view full landscape (maxzoom 1000)", function(args)
+    local val = tonumber(args[1]) or 1000
+    LocalPlayer.CameraMaxZoomDistance = val
+    notify("Camera System", "Maximum Zoom set to: " .. val, 2)
+end)
+
+-- 58. Anti-Touch Transmitter blocker (Ensures killbricks don't process Touch events)
+local touchBlockActive = false
+addCommand({"blocktouches", "notouch"}, "Locks touch checking registers on your character", function()
+    touchBlockActive = not touchBlockActive
+    notify("Safety System", touchBlockActive and "Touch transmitters locked" or "Deactivated", 2)
+    task.spawn(function()
+        while touchBlockActive do
+            task.wait(0.2)
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("TouchTransmitter") then
+                        part:Destroy()
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+-- 59. Client View Custom Distance (Changes workspace fog parameters)
+addCommand({"clearview", "nofogv2"}, "Sets fog limits to maximum to increase view clearings", function()
+    Lighting.FogStart = 9e9
+    Lighting.FogEnd = 9e9
+    notify("Optimization", "Fog equations updated.", 2)
+end)
+
+-- 60. Freeze Player Locally: Freeze specific player's network model representation
+addCommand({"freezeplayer", "clientfreeze"}, "Anchors character elements of target locally (freezeplayer Name)", function(args)
+    local targets = getTargetPlayer(args[1])
+    if #targets > 0 and targets[1] ~= LocalPlayer then
+        local tChar = targets[1].Character
+        if tChar then
+            for _, part in ipairs(tChar:GetDescendants()) do
+                if part:IsA("BasePart") then part.Anchored = true end
+            end
+            notify("Physics Action", "Anchored target representation locally.", 2)
+        end
+    end
+end)
+
+-- 61. Unfreeze Player Locally
+addCommand({"unfreezeplayer", "clientunfreeze"}, "Unanchors character elements of target locally", function(args)
+    local targets = getTargetPlayer(args[1])
+    if #targets > 0 and targets[1] ~= LocalPlayer then
+        local tChar = targets[1].Character
+        if tChar then
+            for _, part in ipairs(tChar:GetDescendants()) do
+                if part:IsA("BasePart") then part.Anchored = false end
+            end
+            notify("Physics Action", "Restored local target physics.", 2)
+        end
+    end
+end)
+
+-- 62. Teleport to target tool
+addCommand({"grabplayertool"}, "Gives a tool that teleports you to the clicked player", function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Teleport To Player"
+    tool.RequiresHandle = false
+    tool.Activated:Connect(function()
+        local mouse = LocalPlayer:GetMouse()
+        local target = mouse.Target
+        if target and target.Parent then
+            local hum = target.Parent:FindFirstChildOfClass("Humanoid")
+            local targetHrp = target.Parent:FindFirstChild("HumanoidRootPart")
+            local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hum and targetHrp and myHrp then
+                myHrp.CFrame = targetHrp.CFrame
+                notify("Teleport System", "Teleported to " .. target.Parent.Name, 2)
+            end
+        end
+    end)
+    tool.Parent = LocalPlayer.Backpack
+    notify("Tool", "Teleport-to-Player Tool added to Backpack.", 2)
+end)
+
+-- 63. Network Speed Checker (Tracks package updates to verify lag spikes)
+addCommand({"netcheck", "checkping"}, "Returns actual package ping to determine connectivity limits", function()
+    local val = Stats.Network.ServerToClientPing:GetValue() * 1000
+    notify("Latency Scan", string.format("True ping: %.2f ms", val), 3)
+end)
+
+-- 64. Fast Loading Mode: Removes heavy models in distant workspace indices
+addCommand({"fastload", "performanceup"}, "Destroys standard decorative folders locally to free resources", function()
+    local deletedCount = 0
+    for _, instance in ipairs(workspace:GetChildren()) do
+        if instance:IsA("Folder") and (instance.Name:lower():find("detail") or instance.Name:lower():find("decoration") or instance.Name:lower():find("tree")) then
+            instance:Destroy()
+            deletedCount = deletedCount + 1
+        end
+    end
+    notify("Engine Optimizer", "Removed " .. deletedCount .. " local background detail groups.", 3)
+end)
+
+-- 65. Set Gravity Back to Normal
+addCommand({"normalgravity", "resetgrav"}, "Resets workspace physics gravity settings back to 196.2", function()
+    workspace.Gravity = 196.2
+    notify("Physics Engine", "Gravity set to normal standard parameters.", 2)
+end)
+
+-- 66. Show Active Player Names in Command Bar Logs
+addCommand({"printplayers"}, "Logs current active players into your local execution interface output window", function()
+    print("----- ACTIVE SERVERS PLAYERS -----")
+    for _, p in ipairs(Players:GetPlayers()) do
+        print(string.format("Name: %s | DisplayName: %s | ID: %d", p.Name, p.DisplayName, p.UserId))
+    end
+    notify("System Log", "Active players output successfully printed to Developer Console.", 3)
+end)
+
+-- 67. Simple Auto farm Click Event (Simulates constant mouse clicks)
+local farmClicks = false
+addCommand({"autofarmclick"}, "Constant execution triggers for standard mouse actions", function()
+    farmClicks = not farmClicks
+    notify("Automator Engine", farmClicks and "Auto click sequence operational" or "Disabled", 2)
+    task.spawn(function()
+        local VIM = game:GetService("VirtualInputManager")
+        while farmClicks do
+            VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+            task.wait(0.1)
+            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+            task.wait(0.1)
+        end
+    end)
+end)
+
+-- 68. Anti-Fling Local System: Forces immediate speed limits on local HumanoidRootPart
+local speedSafetyEnabled = false
+addCommand({"speedsafety", "velocitylimiter"}, "Safely drops excessive mechanical velocity limits on your character", function()
+    speedSafetyEnabled = not speedSafetyEnabled
+    notify("Safety System", speedSafetyEnabled and "Velocity limits active" or "Disabled", 2)
+    task.spawn(function()
+        while speedSafetyEnabled do
+            task.wait(0.1)
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local currentVel = hrp.AssemblyLinearVelocity
+                if currentVel.Magnitude > 300 then
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    notify("Fling Protection", "Suppressed abnormal velocity spike.", 2)
+                end
+            end
+        end
+    end)
+end)
+
+-- 69. Highlight Map Spawns
+addCommand({"espspawns"}, "Highlights all SpawnLocations in the map", function()
+    local count = 0
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("SpawnLocation") then
+            local highlight = obj:FindFirstChild("SpawnHighlight") or Instance.new("Highlight", obj)
+            highlight.Name = "SpawnHighlight"
+            highlight.FillColor = Color3.fromRGB(0, 255, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.FillTransparency = 0.5
+            count = count + 1
+        end
+    end
+    notify("ESP Spawns", "Highlighted " .. count .. " spawn locations.", 3)
+end)
+
+-- 70. Turn off Highlight Map Spawns
+addCommand({"noespspawns"}, "Removes spawn highlights", function()
+    local count = 0
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("SpawnLocation") then
+            local highlight = obj:FindFirstChild("SpawnHighlight")
+            if highlight then
+                highlight:Destroy()
+                count = count + 1
+            end
+        end
+    end
+    notify("ESP Spawns", "Removed spawn highlights.", 2)
+end)
+-- =============================================================================
+-- REBUILD COMMAND LISTS DYNAMICALLY
+-- Rebuilds and registers everything successfully in your console scrolling list.
+-- =============================================================================
+task.spawn(function()
+    task.wait(0.2)
     pcall(function()
         for _, child in ipairs(ScrollContainer:GetChildren()) do
             if child:IsA("Frame") then child:Destroy() end

@@ -4396,1006 +4396,569 @@ task.spawn(function()
         end
     end)
 end)
--- =============================================================================
--- HỆ THỐNG 70 LỆNH MỚI ĐỘC LẬP (LIMIT VISUAL EFFECTS, HIGH UTILITY & AUTOMATION)
--- Append this block directly to the end of your script.
--- This will automatically register 70 new commands and refresh the UI list.
--- =============================================================================
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
-local Stats = game:GetService("Stats")
-local LogService = game:GetService("LogService")
+-- [[ PALOFSC - PURE COMMANDER EXTENSION CODE ]]
+-- This script contains exactly 70 functional, non-visual commands.
+-- Paste this block at the very end of your existing script.
 
--- 1. Anti-Kill: Instantly reset or teleport away if health drops below a certain limit
-local antiKillActive = false
-local antiKillConnection = nil
-addCommand({"antikill", "safedeath"}, "Auto teleport/reset when health falls below 20%", function()
-    antiKillActive = not antiKillActive
-    notify("Anti-Kill", antiKillActive and "Enabled" or "Disabled", 2)
-    if antiKillActive then
-        antiKillConnection = LocalPlayer.CharacterAdded:Connect(function(char)
-            local hum = char:WaitForChild("Humanoid", 5)
-            if hum then
-                hum.HealthChanged:Connect(function(hp)
-                    if antiKillActive and hp < 20 and hp > 0 then
-                        char:BreakJoints()
-                    end
-                end)
-            end
-        end)
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.HealthChanged:Connect(function(hp)
-                if antiKillActive and hp < 20 and hp > 0 then
-                    LocalPlayer.Character:BreakJoints()
-                end
-            end)
-        end
-    else
-        if antiKillConnection then
-            antiKillConnection:Disconnect()
-            antiKillConnection = nil
+local function extendConsole()
+    -- Helper to access existing register function
+    local register = addCommand or function(names, desc, handler)
+        for _, name in ipairs(names) do
+            commands[name:lower()] = {
+                desc = desc,
+                handler = handler
+            }
         end
     end
-end)
 
--- 2. Local Acid/Lava Immunity: Deletes dangerous damage parts locally
-addCommand({"noacid", "nolava"}, "Destroys parts containing 'lava' or 'acid' names locally", function()
-    local count = 0
-    for _, part in ipairs(workspace:GetDescendants()) do
-        if part:IsA("BasePart") then
-            local name = part.Name:lower()
-            if name:find("acid") or name:find("lava") or name:find("toxic") then
-                part:Destroy()
-                count = count + 1
-            end
-        end
-    end
-    notify("Acid Immunity", "Removed " .. count .. " dangerous environmental hazards.", 3)
-end)
+    -- 1. Teleport 50 studs upwards
+    register({"tptop"}, "Dịch chuyển nhân vật lên cao 50 studs", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = hrp.CFrame * CFrame.new(0, 50, 0) end
+    end)
 
--- 3. Click-TP Tool: Simple Click-to-Teleport mechanism
-addCommand({"clicktp", "tptoolv2"}, "Gives a Click-to-Teleport tool", function()
-    local tool = Instance.new("Tool")
-    tool.Name = "Click TP"
-    tool.RequiresHandle = false
-    tool.Activated:Connect(function()
-        local mouse = LocalPlayer:GetMouse()
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp and mouse.Hit then
-            hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+    -- 2. Teleport 50 studs downwards
+    register({"tpdown"}, "Dịch chuyển nhân vật xuống dưới 50 studs", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = hrp.CFrame * CFrame.new(0, -50, 0) end
+    end)
+
+    -- 3. Set custom FPS limit
+    register({"setfps"}, "Giới hạn khung hình FPS tự chọn (ví dụ: setfps 60)", function(args)
+        local cap = tonumber(args[1]) or 60
+        if setfpscap then setfpscap(cap) end
+    end)
+
+    -- 4. Show current network ping
+    register({"ping"}, "Kiểm tra độ trễ mạng hiện tại", function()
+        local stats = game:GetService("Stats")
+        local pingVal = stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
+        notify("Network Ping", "Ping hiện tại: " .. pingVal, 3)
+    end)
+
+    -- 5. Check target account age
+    register({"age"}, "Xem số ngày tuổi của tài khoản người chơi (age name)", function(args)
+        local targets = getTargetPlayer(args[1])
+        if targets[1] then
+            notify("Account Age", targets[1].DisplayName .. ": " .. targets[1].AccountAge .. " ngày", 4)
         end
     end)
-    tool.Parent = LocalPlayer.Backpack
-    notify("Tool", "Click-TP Tool added to Backpack.", 2)
-end)
 
--- 4. No-Clip Bypass v4: Frame-by-frame custom CFrame movement noclip
-local noclipBypassActive = false
-local noclipBypassConn = nil
-addCommand({"noclipbypass2", "ncb"}, "Advanced frame-by-frame CFrame movement noclip", function()
-    noclipBypassActive = not noclipBypassActive
-    notify("Noclip Bypass", noclipBypassActive and "Activated" or "Deactivated", 2)
-    if noclipBypassActive then
-        noclipBypassConn = RunService.Stepped:Connect(function()
-            if not noclipBypassActive then noclipBypassConn:Disconnect() return end
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hrp and hum and hum.MoveDirection.Magnitude > 0 then
-                hrp.CFrame = hrp.CFrame + (hum.MoveDirection * 0.2)
-            end
-        end)
-    else
-        if noclipBypassConn then noclipBypassConn:Disconnect() end
-    end
-end)
+    -- 6. Check target premium membership status
+    register({"premium"}, "Kiểm tra người chơi có nạp Premium hay không", function(args)
+        local targets = getTargetPlayer(args[1])
+        if targets[1] then
+            local isPrem = targets[1].MembershipType == Enum.MembershipType.Premium
+            notify("Premium Check", targets[1].DisplayName .. (isPrem and " có Premium" or " không có Premium"), 3)
+        end
+    end)
 
--- 5. Auto Proximity Prompt Trigger
-local autoPromptActive = false
-addCommand({"autoprompt", "instantinteract"}, "Automatically triggers nearby ProximityPrompts instantly", function()
-    autoPromptActive = not autoPromptActive
-    notify("Auto Prompt", autoPromptActive and "Enabled" or "Disabled", 2)
-    task.spawn(function()
-        while autoPromptActive do
-            task.wait(0.1)
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                for _, prompt in ipairs(workspace:GetDescendants()) do
-                    if prompt:IsA("ProximityPrompt") then
-                        local parent = prompt.Parent
-                        if parent and parent:IsA("BasePart") then
-                            local distance = (parent.Position - hrp.Position).Magnitude
-                            if distance <= prompt.MaxActivationDistance then
-                                fireproximityprompt(prompt)
-                            end
+    -- 7. Instantly clear character joints
+    register({"breakjoints"}, "Tự phá hủy khớp nối cơ thể ngay lập tức", function()
+        if LocalPlayer.Character then LocalPlayer.Character:BreakJoints() end
+    end)
+
+    -- 8. Set player health to custom value
+    register({"sethealth", "sethp"}, "Thay đổi máu hiện tại (ví dụ: sethp 50)", function(args)
+        local hp = tonumber(args[1]) or 100
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Health = hp end
+    end)
+
+    -- 9. Set player maximum health
+    register({"setmaxhealth", "setmaxhp"}, "Thay đổi máu tối đa (ví dụ: setmaxhp 500)", function(args)
+        local mhp = tonumber(args[1]) or 100
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.MaxHealth = mhp; hum.Health = mhp end
+    end)
+
+    -- 10. Instant death command
+    register({"kill"}, "Tự sát nhanh không cần reset", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Health = 0 end
+    end)
+
+    -- 11. Disable character collisions with other players
+    local plNoColl = false
+    register({"nocollideplayers"}, "Tắt hoàn toàn va chạm vật lý với người chơi khác", function()
+        plNoColl = true
+        task.spawn(function()
+            while plNoColl do
+                task.wait(0.5)
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character then
+                        for _, part in ipairs(p.Character:GetDescendants()) do
+                            if part:IsA("BasePart") then part.CanCollide = false end
                         end
                     end
                 end
             end
-        end
-    end)
-end)
-
--- 6. Remote Spammer: Fires all remote events to check standard vulnerabilities
-addCommand({"remotecheck"}, "Analyzes and registers active remote event triggers", function()
-    local count = 0
-    for _, instance in ipairs(game:GetDescendants()) do
-        if instance:IsA("RemoteEvent") then
-            count = count + 1
-        end
-    end
-    notify("Remote Check", "Found " .. count .. " functional network RemoteEvents.", 3)
-end)
-
--- 7. Anti-AFK Method v2: Prevents standard Idle execution logs
-addCommand({"antiafk2"}, "Maintains active connection simulation to prevent timeout kicks", function()
-    pcall(function()
-        local virtualUser = game:GetService("VirtualUser")
-        LocalPlayer.Idled:Connect(function()
-            virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-            task.wait(1)
-            virtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
         end)
-        notify("Anti-AFK", "V2 connection keeping operational.", 2)
     end)
-end)
 
--- 8. Disable Seats: Instantly destroys touch transmitters on seats to prevent unwanted riding
-local seatsDisabled = false
-addCommand({"noseats", "blockseats"}, "Disables all vehicle/furniture seat interactions locally", function()
-    seatsDisabled = true
-    for _, seat in ipairs(workspace:GetDescendants()) do
-        if seat:IsA("Seat") or seat:IsA("VehicleSeat") then
-            seat.Disabled = true
-        end
-    end
-    notify("Seat Blocker", "Disabled passenger/driver seat interactions.", 2)
-end)
+    -- 12. Re-enable character collisions
+    register({"collideplayers"}, "Bật lại va chạm vật lý với người chơi khác", function()
+        plNoColl = false
+    end)
 
--- 9. Enable Seats: Restores seat functions
-addCommand({"unblockseats", "yesseats"}, "Restores passenger/driver seat interactions", function()
-    seatsDisabled = false
-    for _, seat in ipairs(workspace:GetDescendants()) do
-        if seat:IsA("Seat") or seat:IsA("VehicleSeat") then
-            seat.Disabled = false
-        end
-    end
-    notify("Seat Blocker", "Re-enabled passenger/driver seat interactions.", 2)
-end)
-
--- 10. Coin Auto Collector: Teleports generic collectible parts to player
-local autoCollectCoins = false
-addCommand({"autoitemcollect", "coincollector"}, "Collects generic loose map objects (Coins/Token/Cash)", function()
-    autoCollectCoins = not autoCollectCoins
-    notify("Auto Collector", autoCollectCoins and "Scanning Map Items" or "Disabled", 2)
-    task.spawn(function()
-        while autoCollectCoins do
-            task.wait(0.5)
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                for _, part in ipairs(workspace:GetChildren()) do
-                    if part:IsA("BasePart") and (part.Name:lower():find("coin") or part.Name:lower():find("cash") or part.Name:lower():find("token")) then
-                        part.CFrame = hrp.CFrame
-                    end
+    -- 13. Drop all tools in backpack
+    register({"droptools"}, "Ném toàn bộ công cụ cầm tay ra ngoài đất", function()
+        if LocalPlayer.Character then
+            for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+                if tool:IsA("Tool") then
+                    tool.Parent = LocalPlayer.Character
+                    task.wait()
+                    tool.Parent = workspace
                 end
             end
         end
     end)
-end)
 
--- 11. Performance Monitor: Display actual system stats (Ping, RAM, CPU)
-addCommand({"performance", "perf"}, "Provides detailed network latency and memory stats", function()
-    local ping = Stats.Network.ServerToClientPing:GetValue()
-    local fps = math.floor(1 / RunService.RenderStepped:Wait())
-    notify("Hardware Stats", string.format("Latency: %.1f ms\nPerformance: %d FPS", ping * 1000, fps), 5)
-end)
-
--- 12. Instant Unanchor Map: Attempts to unanchor local parts
-addCommand({"unanchormap"}, "Forces all unanchored parts to settle physics", function()
-    local count = 0
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") and not v.Anchored and not v:IsDescendantOf(LocalPlayer.Character) then
-            v:ApplyImpulse(Vector3.new(0, 5, 0))
-            count = count + 1
-        end
-    end
-    notify("Physics Engine", "Updated local physics parameters on " .. count .. " parts.", 3)
-end)
-
--- 13. Auto Rejoin on Server Disconnect
-local autoRejoinActive = false
-addCommand({"autorejoin", "arr"}, "Enable instant automated server hopping upon network disconnection", function()
-    autoRejoinActive = not autoRejoinActive
-    notify("Auto Rejoin", autoRejoinActive and "Active (Will auto-connect on crash/kick)" or "Inactive", 3)
-    pcall(function()
-        game:GetService("GuiService").ErrorMessageChanged:Connect(function()
-            if autoRejoinActive then
-                triggerRejoin()
-            end
-        end)
-    end)
-end)
-
--- 14. Anti-Knockback: Restricts velocity updates from server on your character
-local antiKnockbackActive = false
-local antiKbConn = nil
-addCommand({"antikb", "nokb"}, "Prevents extreme physical force vectors from moving your character", function()
-    antiKnockbackActive = not antiKnockbackActive
-    notify("Anti-KB", antiKnockbackActive and "Enabled" or "Disabled", 2)
-    if antiKnockbackActive then
-        antiKbConn = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local currentVel = hrp.AssemblyLinearVelocity
-                hrp.AssemblyLinearVelocity = Vector3.new(0, currentVel.Y, 0)
-            end
-        end)
-    else
-        if antiKbConn then antiKbConn:Disconnect() end
-    end
-end)
-
--- 15. Disable Particle Emitters: Drastically boosts performance without modifying models
-addCommand({"noparticles", "boostfps"}, "Removes lag-inducing particle effects globally", function()
-    local count = 0
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("ParticleEmitter") or obj:IsA("Sparkles") or obj:IsA("Fire") or obj:IsA("Smoke") then
-            obj:Destroy()
-            count = count + 1
-        end
-    end
-    notify("Engine Booster", "Terminated " .. count .. " performance-draining emitters.", 3)
-end)
-
--- 16. Chat Logger: Prints log of messages to your console output
-local chatLogging = false
-addCommand({"logchat", "chatlogger"}, "Enables internal script execution log redirection for chat messages", function()
-    chatLogging = not chatLogging
-    notify("Logger", chatLogging and "Chat Logging Enabled" or "Disabled", 2)
-    for _, player in ipairs(Players:GetPlayers()) do
-        player.Chatted:Connect(function(msg)
-            if chatLogging then
-                print("[" .. player.Name .. "]: " .. msg)
-            end
-        end)
-    end
-    Players.PlayerAdded:Connect(function(player)
-        player.Chatted:Connect(function(msg)
-            if chatLogging then
-                print("[" .. player.Name .. "]: " .. msg)
-            end
-        end)
-    end)
-end)
-
--- 17. Teleport Tools to Character
-addCommand({"grabtools", "collecttools2"}, "Teleports all tools within workspace straight to character", function()
-    local char = LocalPlayer.Character
-    if char then
-        for _, instance in ipairs(workspace:GetDescendants()) do
-            if instance:IsA("Tool") then
-                instance.Parent = char
-            end
-        end
-        notify("Inventory System", "Workspace tools grabbed.", 2)
-    end
-end)
-
--- 18. Auto Armor/Weapon Use: Rapid fires backpack objects
-local autoToolUse = false
-addCommand({"autousetools", "toolspam"}, "Enables rapid auto-use cycles for tools", function()
-    autoToolUse = not autoToolUse
-    notify("Tool Spam", autoToolUse and "Rapid use active" or "Deactivated", 2)
-    task.spawn(function()
-        while autoToolUse do
-            task.wait(0.05)
-            local char = LocalPlayer.Character
-            local tool = char and char:FindFirstChildOfClass("Tool")
-            if tool then
-                tool:Activate()
+    -- 14. Equip all tools in backpack simultaneously
+    register({"equiptools"}, "Trang bị tất cả công cụ trong túi đồ cùng lúc", function()
+        for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool.Parent = LocalPlayer.Character
             end
         end
     end)
-end)
 
--- 19. Freeze Camera Position locally
-local camPosFrozen = false
-local camFreezeCFrame = nil
-addCommand({"freezecamera", "fcam"}, "Toggles freezing workspace camera position instantly", function()
-    camPosFrozen = not camPosFrozen
-    if camPosFrozen then
-        camFreezeCFrame = Camera.CFrame
-        Camera.CameraType = Enum.CameraType.Scriptable
-        notify("Camera System", "Camera Position Locked.", 2)
-        task.spawn(function()
-            while camPosFrozen do
-                Camera.CFrame = camFreezeCFrame
-                RunService.RenderStepped:Wait()
-            end
-        end)
-    else
-        Camera.CameraType = Enum.CameraType.Custom
-        notify("Camera System", "Camera Position Unlocked.", 2)
-    end
-end)
-
--- 20. Infinite Jump V2 (Anti-Cheat proof CFrame upward nudge)
-local infJumpV2Active = false
-addCommand({"infjump2", "ijv2"}, "Continuous anti-cheat bypass vertical climb", function()
-    infJumpV2Active = not infJumpV2Active
-    notify("Climb Assist", infJumpV2Active and "Active (Hold Spacebar)" or "Deactivated", 2)
-    task.spawn(function()
-        while infJumpV2Active do
-            task.wait(0.1)
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                local char = LocalPlayer.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.CFrame = hrp.CFrame + Vector3.new(0, 3.5, 0)
+    -- 15. Unequip all active tools
+    register({"unequiptools"}, "Cất toàn bộ công cụ đang cầm trên tay vào túi", function()
+        if LocalPlayer.Character then
+            for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
+                if tool:IsA("Tool") then
+                    tool.Parent = LocalPlayer.Backpack
                 end
             end
         end
     end)
-end)
 
--- 21. Clean Inventory: Discards all tools currently inside Backpack
-addCommand({"emptybackpack", "clearinv"}, "Completely purges tools from your backpack", function()
-    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
-    if backpack then
-        backpack:ClearAllChildren()
-        notify("Inventory", "Backpack completely cleaned.", 2)
-    end
-end)
+    -- 16. Delete all tools inside Backpack
+    register({"clearbackpack"}, "Xóa sạch toàn bộ túi đồ rương chứa dụng cụ", function()
+        LocalPlayer.Backpack:ClearAllChildren()
+    end)
 
--- 22. Toggle CoreGUI elements (Micro Profiler / Diagnostics)
-local coreGuiVisible = true
-addCommand({"togglecoregui", "showgui"}, "Toggles system visibility indicators", function()
-    coreGuiVisible = not coreGuiVisible
-    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, coreGuiVisible)
-    notify("Core Interface", coreGuiVisible and "Core GUI Visible" or "Core GUI Hidden", 2)
-end)
-
--- 23. Direct View Distance Modifier (Camera Far Plane)
-addCommand({"viewdist", "farclip"}, "Adjusts rendering calculations for maximum field view (farclip 10000)", function(args)
-    local distance = tonumber(args[1]) or 10000
-    settings().Rendering.DrawDistance = distance
-    notify("Graphics Engine", "Draw distance set to: " .. distance, 3)
-end)
-
--- 24. Low Physics Quality: Drastically drops CPU usage of local physics loops
-addCommand({"lowphys", "fpsphys"}, "Toggles simplified client-side physics solver settings", function()
-    settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalThrottle.Enabled
-    notify("Physics Engine", "Optimized physical calculations for framerate.", 2)
-end)
-
--- 25. Standard Viewport FOV Loop Reset
-addCommand({"resetfov"}, "Resets camera view angle to 70 degrees", function()
-    Camera.FieldOfView = 70
-    notify("Camera System", "Camera Field of View Reset.", 2)
-end)
-
--- 26. Memory Usage Output
-addCommand({"memusage", "checkram"}, "Logs total system memory reserved by current process", function()
-    local ramUsage = Stats:GetTotalMemoryUsageMb()
-    notify("System Diagnostics", string.format("Roblox Client Ram: %.2f MB", ramUsage), 4)
-end)
-
--- 27. Remote Spy Listener (Basic execution capture console output)
-local remoteSpyEnabled = false
-addCommand({"spyremotes"}, "Toggles monitoring network traffic calls on RemoteEvents", function()
-    remoteSpyEnabled = not remoteSpyEnabled
-    notify("Remote Spy", remoteSpyEnabled and "Spy Active (Outputting in Developer Console)" or "Deactivated", 2)
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            obj.OnClientEvent:Connect(function(...)
-                if remoteSpyEnabled then
-                    print("[RemoteEvent Captured]: " .. obj:GetFullName(), " Args: ", ...)
-                end
-            end)
-        end
-    end
-end)
-
--- 28. Instant Rejoin Alternative Engine
-addCommand({"fastrj", "reconnect"}, "Instantly executes standard socket reconnect routines", function()
-    notify("Reconnecting", "Leaving and rejoining server...", 2)
-    task.wait(0.5)
-    triggerRejoin()
-end)
-
--- 29. Auto-Equip Tools from Backpack
-local autoEquipTools = false
-addCommand({"autoequip", "eq"}, "Keeps tools in hand continuously", function()
-    autoEquipTools = not autoEquipTools
-    notify("Inventory", autoEquipTools and "Auto Equip Activated" or "Deactivated", 2)
-    task.spawn(function()
-        while autoEquipTools do
-            task.wait(0.5)
-            local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
-            local char = LocalPlayer.Character
-            if backpack and char then
-                local tool = backpack:FindFirstChildOfClass("Tool")
-                if tool then
-                    tool.Parent = char
-                end
+    -- 17. Activate all equipped tools (auto click/fire)
+    register({"activatetools"}, "Tự động kích hoạt toàn bộ công cụ đang cầm", function()
+        if LocalPlayer.Character then
+            for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
+                if tool:IsA("Tool") then tool:Activate() end
             end
         end
     end)
-end)
 
--- 30. Unanchor Character Assembly Part locally
-addCommand({"partunanchor", "selfunanchor"}, "Local client physics simulation check on body parts", function()
-    local char = LocalPlayer.Character
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
+    -- 18. Toggle Roblox Default Chat Window
+    local chatHidden = false
+    register({"togglechat"}, "Ẩn hoặc hiện khung chat mặc định của Roblox", function()
+        chatHidden = not chatHidden
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, not chatHidden)
+    end)
+
+    -- 19. Set custom walkspeed
+    register({"setwalkspeed", "setws"}, "Thiết lập tốc độ chạy tự do", function(args)
+        local val = tonumber(args[1]) or 16
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = val end
+    end)
+
+    -- 20. Stop character movement completely (0 speed)
+    register({"freezespeed"}, "Đóng băng tốc độ chạy bằng 0", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 0 end
+    end)
+
+    -- 21. Check local device system OS information
+    register({"sysinfo"}, "Xem hệ điều hành đang vận hành game", function()
+        local guiService = game:GetService("GuiService")
+        local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+        notify("System Info", isMobile and "Thiết bị di động (Mobile)" or "Máy tính/PC", 3)
+    end)
+
+    -- 22. Copy game server JobId
+    register({"copyjobid"}, "Sao chép mã phòng Job ID hiện tại", function()
+        if setclipboard then setclipboard(tostring(game.JobId)) end
+    end)
+
+    -- 23. Disable camera standard zoom limits
+    register({"unlimitzoom"}, "Mở rộng giới hạn khoảng cách zoom Camera tối đa", function()
+        LocalPlayer.CameraMaxZoomDistance = 99999
+    end)
+
+    -- 24. Revert camera zoom limits
+    register({"normalzoom"}, "Đặt lại giới hạn khoảng cách zoom Camera gốc", function()
+        LocalPlayer.CameraMaxZoomDistance = 400
+    end)
+
+    -- 25. Trigger all proximity prompts in workspace
+    register({"fireprompts"}, "Kích hoạt toàn bộ ProximityPrompt trong bản đồ cùng lúc", function()
+        for _, prompt in ipairs(workspace:GetDescendants()) do
+            if prompt:IsA("ProximityPrompt") then
+                fireproximityprompt(prompt)
+            end
+        end
+    end)
+
+    -- 26. Reset camera back to local player
+    register({"resetview"}, "Khôi phục camera về chính nhân vật của bạn", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then Camera.CameraSubject = hum end
+    end)
+
+    -- 27. Show active servers count
+    register({"playercount"}, "Xem tổng số lượng người đang chơi trong phòng", function()
+        notify("Server Info", "Tổng số người chơi: " .. #Players:GetPlayers(), 3)
+    end)
+
+    -- 28. Client side mute all active game sounds
+    register({"mutesounds"}, "Tắt toàn bộ âm thanh đang phát trong game", function()
+        for _, sound in ipairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") then sound.Volume = 0 end
+        end
+    end)
+
+    -- 29. Client side unmute all sounds
+    register({"unmutesounds"}, "Mở lại toàn bộ âm thanh trong game", function()
+        for _, sound in ipairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") then sound.Volume = 0.5 end
+        end
+    end)
+
+    -- 30. Unanchor all parts within game workspace
+    register({"unanchorworkspace"}, "Bỏ khóa vật lý tất cả khối hộp trong map (client-side)", function()
+        for _, part in ipairs(workspace:GetDescendants()) do
+            if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
                 part.Anchored = false
             end
         end
-        notify("Physics Check", "Unanchored character physics locally.", 2)
-    end
-end)
+    end)
 
--- 31. Anti-Trip: Keeps Humanoid from entering falling state states
-local antiTripActive = false
-local antiTripConn = nil
-addCommand({"antitrip", "nofall"}, "Locks your character's balance preventing falling over", function()
-    antiTripActive = not antiTripActive
-    notify("Balance Lock", antiTripActive and "Active" or "Disabled", 2)
-    if antiTripActive then
+    -- 31. Teleport to a random player
+    register({"tprandom"}, "Dịch chuyển ngẫu nhiên tới một người chơi", function()
+        local other = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then table.insert(other, p) end
+        end
+        if #other > 0 then
+            local rPlayer = other[math.random(1, #other)]
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local tHrp = rPlayer.Character and rPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and tHrp then hrp.CFrame = tHrp.CFrame end
+        end
+    end)
+
+    -- 32. Show local server age uptime
+    register({"servertime"}, "Kiểm tra thời gian hoạt động của Server", function()
+        local uptime = math.floor(workspace.DistributedGameTime)
+        notify("Uptime", "Server đã chạy được: " .. uptime .. " giây", 4)
+    end)
+
+    -- 33. Set character gravity very low
+    register({"floatgravity"}, "Trọng lực cực thấp giúp nhảy bay chậm như vũ trụ", function()
+        workspace.Gravity = 10
+    end)
+
+    -- 34. Set gravity default value
+    register({"resetgravity"}, "Khôi phục lại trọng lực chuẩn của bản đồ", function()
+        workspace.Gravity = 196.2
+    end)
+
+    -- 35. Make character left arm transparent
+    register({"hideleftarm"}, "Làm tàng hình cánh tay trái", function()
+        local char = LocalPlayer.Character
+        local part = char and (char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftUpperArm"))
+        if part then part.Transparency = 1 end
+    end)
+
+    -- 36. Make character right arm transparent
+    register({"hiderightarm"}, "Làm tàng hình cánh tay phải", function()
+        local char = LocalPlayer.Character
+        local part = char and (char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm"))
+        if part then part.Transparency = 1 end
+    end)
+
+    -- 37. Restore visibility of both arms
+    register({"showarms"}, "Hiển thị lại hai cánh tay", function()
+        local char = LocalPlayer.Character
+        if char then
+            for _, name in ipairs({"Left Arm", "LeftUpperArm", "LeftLowerArm", "LeftHand", "Right Arm", "RightUpperArm", "RightLowerArm", "RightHand"}) do
+                local p = char:FindFirstChild(name)
+                if p then p.Transparency = 0 end
+            end
+        end
+    end)
+
+    -- 38. Make legs transparent
+    register({"hidelegs"}, "Làm tàng hình đôi chân của nhân vật", function()
+        local char = LocalPlayer.Character
+        if char then
+            for _, name in ipairs({"Left Leg", "Right Leg", "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "LeftFoot", "RightFoot"}) do
+                local p = char:FindFirstChild(name)
+                if p then p.Transparency = 1 end
+            end
+        end
+    end)
+
+    -- 39. Restore visibility of both legs
+    register({"showlegs"}, "Hiển thị lại hai chân", function()
+        local char = LocalPlayer.Character
+        if char then
+            for _, name in ipairs({"Left Leg", "Right Leg", "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "LeftFoot", "RightFoot"}) do
+                local p = char:FindFirstChild(name)
+                if p then p.Transparency = 0 end
+            end
+        end
+    end)
+
+    -- 40. Enable character mass-less physics
+    register({"setmassless"}, "Giảm trọng lượng khối cơ thể nhân vật về bằng 0", function()
+        if LocalPlayer.Character then
+            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then part.Massless = true end
+            end
+        end
+    end)
+
+    -- 41. Revert character mass calculations
+    register({"setmass"}, "Khôi phục trọng lượng chuẩn cho nhân vật", function()
+        if LocalPlayer.Character then
+            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then part.Massless = false end
+            end
+        end
+    end)
+
+    -- 42. Force custom sit state duration
+    register({"sit"}, "Bắt buộc nhân vật ngồi bệt xuống đất", function()
         local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-        end
-    else
+        if hum then hum.Sitting = true end
+    end)
+
+    -- 43. Force stand up
+    register({"stand"}, "Đứng dậy từ trạng thái ngồi", function()
         local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-        end
-    end
-end)
+        if hum then hum.Sitting = false end
+    end)
 
--- 32. Show Hidden Parts (Transparency set to 0 on non-zero transparent Parts)
-addCommand({"showinvisible", "showhidden"}, "Makes invisible workspace obstacles visible locally", function()
-    local count = 0
-    for _, part in ipairs(workspace:GetDescendants()) do
-        if part:IsA("BasePart") and part.Transparency > 0.8 and not part:IsDescendantOf(LocalPlayer.Character) then
-            part.Transparency = 0.4
-            part.Color = Color3.fromRGB(255, 0, 0)
-            count = count + 1
-        end
-    end
-    notify("Map Scan", "Discovered and colored " .. count .. " transparent parts.", 3)
-end)
+    -- 44. Instantly kill targeted player (if tools/killing methods allowed)
+    register({"treset"}, "Bắt buộc nhân vật tự reset nhanh chóng", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Health = 0 end
+    end)
 
--- 33. Set Custom Walkspeed Anti-Cheat Limit (Keeps speed constant regardless of server updates)
-local speedHookActive = false
-local forcedWalkSpeed = 16
-addCommand({"forcespeed", "fws"}, "Locks and forces speed variable against network corrections (forcespeed 50)", function(args)
-    forcedWalkSpeed = tonumber(args[1]) or 16
-    speedHookActive = true
-    notify("Speed Engine", "Forced Speed Set to: " .. forcedWalkSpeed, 2)
-    task.spawn(function()
-        while speedHookActive do
-            task.wait(0.1)
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.WalkSpeed = forcedWalkSpeed
+    -- 45. Keep target coordinate logging active
+    register({"printcoords"}, "In tọa độ hiện tại ra bảng text gợi ý", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local pos = hrp.Position
+            InfoText.Text = string.format("Tọa độ hiện tại: X=%.2f, Y=%.2f, Z=%.2f", pos.X, pos.Y, pos.Z)
+        end
+    end)
+
+    -- 46. Copy CFrame coordinate code
+    register({"copycframe"}, "Sao chép mã khởi tạo CFrame dạng Vector3", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local p = hrp.Position
+            if setclipboard then
+                setclipboard("CFrame.new("..p.X..", "..p.Y..", "..p.Z..")")
+                notify("System", "Đã sao chép CFrame vào clipboard!", 2)
             end
         end
     end)
-end)
 
--- 34. Disable Custom Walkspeed Anti-Cheat Limit
-addCommand({"unforcespeed", "nofws"}, "Unlocks speed locking mechanism", function()
-    speedHookActive = false
-    notify("Speed Engine", "Speed locking mechanism disabled.", 2)
-end)
-
--- 35. FPS Limiter: Optimizes rendering loops
-addCommand({"capfps"}, "Restricts rendering loop to lower thread count values (capfps 30)", function(args)
-    local val = tonumber(args[1]) or 30
-    if setfpscap then
-        setfpscap(val)
-        notify("Hardware Control", "FPS successfully locked to: " .. val, 2)
-    else
-        notify("Error", "Executor does not support setfpscap.", 2)
-    end
-end)
-
--- 36. Show Server Run Time (Uptime counter)
-addCommand({"serveruptime", "uptime"}, "Returns total operation timeframe of server instance", function()
-    local currentUptime = workspace.DistributedGameTime
-    local hours = math.floor(currentUptime / 3600)
-    local minutes = math.floor((currentUptime % 3600) / 60)
-    local seconds = math.floor(currentUptime % 60)
-    notify("Server Diagnostics", string.format("Server Uptime: %02d:%02d:%02d", hours, minutes, seconds), 4)
-end)
-
--- 37. Clear Decals and Textures (Minimal lag-reduction bypass)
-addCommand({"cleardecals", "notextures"}, "Discards local surface graphic meshes to bypass memory caps", function()
-    local count = 0
-    for _, decal in ipairs(workspace:GetDescendants()) do
-        if decal:IsA("Decal") or decal:IsA("Texture") then
-            decal:Destroy()
-            count = count + 1
+    -- 47. Check if target user is using mobile interface
+    register({"checkmobile"}, "Kiểm tra người chơi có đang dùng thiết bị cảm ứng", function(args)
+        local targets = getTargetPlayer(args[1])
+        if targets[1] then
+            -- Note: Accurate checks require server scripts, this reads client-side guess
+            notify("Platform Guess", targets[1].DisplayName .. " đang dùng thiết bị cảm ứng: " .. tostring(UserInputService.TouchEnabled), 3)
         end
-    end
-    notify("Optimization", "Destroyed " .. count .. " decals and textures.", 3)
-end)
+    end)
 
--- 38. Player Position Tracker Logs
-local trackPositionLog = false
-addCommand({"logposition", "trackpos"}, "Enables background tracking updates for development coordinates", function()
-    trackPositionLog = not trackPositionLog
-    notify("Tracker", trackPositionLog and "Positional coordinate logging activated" or "Deactivated", 2)
-    task.spawn(function()
-        while trackPositionLog do
-            task.wait(2)
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local pos = hrp.Position
-                print(string.format("[COORDINATE TRACK]: X: %.2f | Y: %.2f | Z: %.2f", pos.X, pos.Y, pos.Z))
+    -- 48. Print current room name
+    register({"placeid"}, "Xem mã đăng ký game hiện tại", function()
+        notify("Game Registry", "Mã PlaceID hiện hành: " .. game.PlaceId, 4)
+    end)
+
+    -- 49. Teleport directly above nearest player
+    register({"tpabovetarget"}, "Dịch chuyển lên đỉnh đầu người chơi chỉ định (tpabove name)", function(args)
+        local targets = getTargetPlayer(args[1])
+        if targets[1] and targets[1].Character then
+            local tHrp = targets[1].Character:FindFirstChild("HumanoidRootPart")
+            local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if tHrp and myHrp then
+                myHrp.CFrame = tHrp.CFrame * CFrame.new(0, 8, 0)
             end
         end
     end)
-end)
 
--- 39. Teleport target to Void locally (Physics desync)
-addCommand({"voidplayer", "clientvoid"}, "Forces target client representation to register high vertical drop variables (voidplayer name)", function(args)
-    local targets = getTargetPlayer(args[1])
-    if #targets > 0 and targets[1] ~= LocalPlayer then
-        local tChar = targets[1].Character
-        if tChar then
-            tChar:TranslateBy(Vector3.new(0, -1000, 0))
-            notify("Physics Action", "Dispatched client position update target.", 2)
-        end
-    end
-end)
-
--- 40. Anti-Drown Loop (Continuous water level adjustment if swimming)
-local antiDrownActive = false
-addCommand({"antidrown", "infbreath"}, "Locks breathing stats preventing asphyxiation values", function()
-    antiDrownActive = not antiDrownActive
-    notify("Survival Engine", antiDrownActive and "Air flow locked (Anti-Drown Active)" or "Disabled", 2)
-    task.spawn(function()
-        while antiDrownActive do
-            task.wait(1)
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hum and hum:GetState() == Enum.HumanoidStateType.Swimming then
-                hum:ChangeState(Enum.HumanoidStateType.Running)
-            end
-        end
-    end)
-end)
-
--- 41. Simulated Lag: Intentionally drop local frame updates
-local fakeLagActive = false
-addCommand({"fakelag"}, "Induces intentional package collection drops", function()
-    fakeLagActive = not fakeLagActive
-    notify("Network Desync", fakeLagActive and "Lag activated" or "Deactivated", 2)
-    task.spawn(function()
-        while fakeLagActive do
-            settings().Network.IncomingReplicationLag = 1000
-            task.wait(0.5)
-            settings().Network.IncomingReplicationLag = 0
-            task.wait(0.5)
-        end
-        settings().Network.IncomingReplicationLag = 0
-    end)
-end)
-
--- 42. Infinite Jump bypass V3 (Velocity override climb)
-local infJumpV3 = false
-addCommand({"climbassist"}, "Alternative climb method using velocity modifiers", function()
-    infJumpV3 = not infJumpV3
-    notify("Climb Assist", infJumpV3 and "Enabled" or "Disabled", 2)
-    UserInputService.JumpRequest:Connect(function()
-        if infJumpV3 then
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 60, hrp.AssemblyLinearVelocity.Z)
-            end
-        end
-    end)
-end)
-
--- 43. Simple Click Kill Tool (Client side entity deletion)
-addCommand({"clickdeletev2", "instadelete"}, "Gives a tool that removes clicked objects permanently from workspace", function()
-    local tool = Instance.new("Tool")
-    tool.Name = "Insta Delete"
-    tool.RequiresHandle = false
-    tool.Activated:Connect(function()
-        local mouse = LocalPlayer:GetMouse()
-        if mouse.Target then
-            mouse.Target:Destroy()
-        end
-    end)
-    tool.Parent = LocalPlayer.Backpack
-    notify("Tool", "Deletion tool generated successfully.", 2)
-end)
-
--- 44. Local Ambient Brightness Modifier
-addCommand({"ambientbright"}, "Overrides standard environment ambient values", function()
-    Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-    Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-    notify("Lighting System", "Overrode ambient variables.", 2)
-end)
-
--- 45. Disable Camera Shake Scripts
-addCommand({"noshake", "blockshake"}, "Blocks shake actions from impacting camera focus vectors", function()
-    pcall(function()
-        local playerScripts = LocalPlayer:WaitForChild("PlayerScripts")
-        for _, script in ipairs(playerScripts:GetDescendants()) do
-            if script.Name:lower():find("shake") or script.Name:lower():find("sway") then
-                script.Disabled = true
-            end
-        end
-        notify("Camera System", "Sway and shake scripts disabled.", 2)
-    end)
-end)
-
--- 46. Copy Current CFrame to System Clipboard
-addCommand({"copycframe", "getpos"}, "Saves current position matrix directly to execution output logs", function()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local cf = tostring(hrp.CFrame)
-        if setclipboard then
-            setclipboard(cf)
-            notify("Coordinate System", "CFrame saved to Clipboard.", 2)
-        else
-            print("CFrame Output: " .. cf)
-            notify("Coordinate System", "Printed to Developer Console.", 2)
-        end
-    end
-end)
-
--- 47. Rapid Item Drop (Emulates dropping currently active hand items)
-local autoDropping = false
-addCommand({"dropinv", "spamdrop"}, "Automatically drops current tool", function()
-    autoDropping = not autoDropping
-    notify("Inventory System", autoDropping and "Spam Drop Active" or "Disabled", 2)
-    task.spawn(function()
-        while autoDropping do
-            task.wait(0.1)
-            local char = LocalPlayer.Character
-            local tool = char and char:FindFirstChildOfClass("Tool")
-            if tool then
-                tool.Parent = workspace
-            end
-        end
-    end)
-end)
-
--- 48. Disable UI Anti-Cheat (Standard Core Gui detection bypass attempt)
-addCommand({"unhookgui"}, "Deregisters active monitoring systems looking for CoreGui changes", function()
-    pcall(function()
-        local screenGuis = game:GetService("CoreGui"):GetChildren()
-        for _, gui in ipairs(screenGuis) do
-            if gui:IsA("ScreenGui") and gui ~= PureAdminGUI then
-                gui.Enabled = false
-            end
-        end
-        notify("Protection Bypass", "CoreGui components monitored and locked.", 2)
-    end)
-end)
-
--- 49. Map Performance Lock (Stops rendering additions dynamically)
-addCommand({"instantsimplify", "perfmode"}, "Drastically drops resolution and map details for slow machines", function()
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                obj.Material = Enum.Material.Plastic
-                obj.Reflectance = 0
-            end
-        end
-        notify("Engine Configuration", "Minimal rendering load variables enabled.", 3)
-    end)
-end)
-
--- 50. Disable Lighting Shadow Casts
-addCommand({"shadowsoff", "noshadows"}, "Deactivates physical shadowing equations to optimize framerate", function()
-    Lighting.GlobalShadows = false
-    notify("Lighting", "Shadow render calculations terminated.", 2)
-end)
-
--- 51. Enable Lighting Shadow Casts
-addCommand({"shadowson"}, "Re-enables standard shadow render calculations", function()
-    Lighting.GlobalShadows = true
-    notify("Lighting", "Shadow render calculations re-enabled.", 2)
-end)
-
--- 52. Remote Event Blocker: Prevents firing certain networking signals (Standard safety precaution)
-local blockedRemotes = {}
-addCommand({"blockremote"}, "Temporarily blocks a specific remote call (blockremote Name)", function(args)
-    local rName = args[1]
-    if rName then
-        blockedRemotes[rName:lower()] = true
-        notify("Security System", "Remote Event named '" .. rName .. "' blocked from executing.", 3)
-    end
-end)
-
--- 53. Unblock Remote Events
-addCommand({"unblockremote"}, "Unblocks a specific remote call (unblockremote Name)", function(args)
-    local rName = args[1]
-    if rName then
-        blockedRemotes[rName:lower()] = nil
-        notify("Security System", "Remote Event named '" .. rName .. "' unblocked.", 3)
-    end
-end)
-
--- 54. Trigger Rejoin Overlay
-addCommand({"forcerejoin"}, "Simulates a soft server re-connection immediately", function()
-    triggerRejoin()
-end)
-
--- 55. Safe Destroy: Silently deletes any selected workspace item safely
-addCommand({"safedestroy"}, "Destroys a selected workspace part safely (safedestroy PartPath)", function(args)
-    local pathStr = table.concat(args, " ")
-    if pathStr ~= "" then
-        pcall(function()
-            local target = loadstring("return " .. pathStr)()
-            if target then target:Destroy() end
-        end)
-    end
-end)
-
--- 56. Simple Fly Engine V4 (Standard frame scaling speed)
-local flyV4Active = false
-local flyV4Speed = 50
-local flyV4Conn = nil
-addCommand({"simplefly"}, "Toggles flying using frame-by-frame offset updates (simplefly Speed)", function(args)
-    flyV4Active = not flyV4Active
-    flyV4Speed = tonumber(args[1]) or 50
-    notify("Movement Engine", flyV4Active and "Fly active at speed " .. flyV4Speed or "Disabled", 2)
-    if flyV4Active then
-        flyV4Conn = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hrp and hum then
-                hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                if hum.MoveDirection.Magnitude > 0 then
-                    hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (flyV4Speed * 0.016))
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                    hrp.CFrame = hrp.CFrame + Vector3.new(0, flyV4Speed * 0.016, 0)
-                end
-            end
-        end)
-    else
-        if flyV4Conn then flyV4Conn:Disconnect() end
-    end
-end)
-
--- 57. Set Maximum Camera Zoom
-addCommand({"maxzoom"}, "Overrides camera limits to view full landscape (maxzoom 1000)", function(args)
-    local val = tonumber(args[1]) or 1000
-    LocalPlayer.CameraMaxZoomDistance = val
-    notify("Camera System", "Maximum Zoom set to: " .. val, 2)
-end)
-
--- 58. Anti-Touch Transmitter blocker (Ensures killbricks don't process Touch events)
-local touchBlockActive = false
-addCommand({"blocktouches", "notouch"}, "Locks touch checking registers on your character", function()
-    touchBlockActive = not touchBlockActive
-    notify("Safety System", touchBlockActive and "Touch transmitters locked" or "Deactivated", 2)
-    task.spawn(function()
-        while touchBlockActive do
-            task.wait(0.2)
-            local char = LocalPlayer.Character
-            if char then
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("TouchTransmitter") then
-                        part:Destroy()
-                    end
+    -- 50. Client-side invisible accessory toggler
+    register({"hideaccessories"}, "Tạm thời ẩn toàn bộ phụ kiện trên người", function()
+        if LocalPlayer.Character then
+            for _, v in ipairs(LocalPlayer.Character:GetChildren()) do
+                if v:IsA("Accessory") then
+                    local h = v:FindFirstChild("Handle")
+                    if h then h.Transparency = 1 end
                 end
             end
         end
     end)
-end)
 
--- 59. Client View Custom Distance (Changes workspace fog parameters)
-addCommand({"clearview", "nofogv2"}, "Sets fog limits to maximum to increase view clearings", function()
-    Lighting.FogStart = 9e9
-    Lighting.FogEnd = 9e9
-    notify("Optimization", "Fog equations updated.", 2)
-end)
-
--- 60. Freeze Player Locally: Freeze specific player's network model representation
-addCommand({"freezeplayer", "clientfreeze"}, "Anchors character elements of target locally (freezeplayer Name)", function(args)
-    local targets = getTargetPlayer(args[1])
-    if #targets > 0 and targets[1] ~= LocalPlayer then
-        local tChar = targets[1].Character
-        if tChar then
-            for _, part in ipairs(tChar:GetDescendants()) do
-                if part:IsA("BasePart") then part.Anchored = true end
+    -- 51. Client-side visible accessory toggler
+    register({"showaccessories"}, "Hiển thị lại toàn bộ phụ kiện trên người", function()
+        if LocalPlayer.Character then
+            for _, v in ipairs(LocalPlayer.Character:GetChildren()) do
+                if v:IsA("Accessory") then
+                    local h = v:FindFirstChild("Handle")
+                    if h then h.Transparency = 0 end
+                end
             end
-            notify("Physics Action", "Anchored target representation locally.", 2)
         end
-    end
-end)
+    end)
 
--- 61. Unfreeze Player Locally
-addCommand({"unfreezeplayer", "clientunfreeze"}, "Unanchors character elements of target locally", function(args)
-    local targets = getTargetPlayer(args[1])
-    if #targets > 0 and targets[1] ~= LocalPlayer then
-        local tChar = targets[1].Character
-        if tChar then
-            for _, part in ipairs(tChar:GetDescendants()) do
+    -- 52. Disable Roblox default screen dynamic graphics filter overrides
+    register({"clearlighting"}, "Xóa toàn bộ hiệu ứng đổi tông màu ánh sáng", function()
+        Lighting:ClearAllChildren()
+    end)
+
+    -- 53. Un-Anchor all character parts (unlock movement glitches)
+    register({"unanchorcharacter"}, "Xác nhận không để bất kỳ bộ phận cơ thể nào bị giữ cứng", function()
+        if LocalPlayer.Character then
+            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
                 if part:IsA("BasePart") then part.Anchored = false end
             end
-            notify("Physics Action", "Restored local target physics.", 2)
         end
-    end
-end)
+    end)
 
--- 62. Teleport to target tool
-addCommand({"grabplayertool"}, "Gives a tool that teleports you to the clicked player", function()
-    local tool = Instance.new("Tool")
-    tool.Name = "Teleport To Player"
-    tool.RequiresHandle = false
-    tool.Activated:Connect(function()
-        local mouse = LocalPlayer:GetMouse()
-        local target = mouse.Target
-        if target and target.Parent then
-            local hum = target.Parent:FindFirstChildOfClass("Humanoid")
-            local targetHrp = target.Parent:FindFirstChild("HumanoidRootPart")
-            local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hum and targetHrp and myHrp then
-                myHrp.CFrame = targetHrp.CFrame
-                notify("Teleport System", "Teleported to " .. target.Parent.Name, 2)
+    -- 54. Freeze all animation track controllers
+    register({"stopanimations"}, "Dừng mọi hành động chuyển động nhảy chạy múa", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            for _, track in ipairs(hum:GetPlayingAnimationTracks()) do track:Stop() end
+        end
+    end)
+
+    -- 55. Set absolute camera minimum zoom to zero
+    register({"minzoom"}, "Thu nhỏ giới hạn thu sát ống kính về mức tối thiểu 0", function()
+        LocalPlayer.CameraMinZoomDistance = 0
+    end)
+
+    -- 56. Revert minimum zoom
+    register({"normalminzoom"}, "Đặt lại giới hạn tối thiểu zoom Camera về gốc", function()
+        LocalPlayer.CameraMinZoomDistance = 0.5
+    end)
+
+    -- 57. Remove target character clothes mesh (Client side)
+    register({"removeclothing"}, "Lột đồ vải bọc cơ thể dạng áo và quần", function()
+        if LocalPlayer.Character then
+            for _, item in ipairs(LocalPlayer.Character:GetChildren()) do
+                if item:IsA("Shirt") or item:IsA("Pants") then item:Destroy() end
             end
         end
     end)
-    tool.Parent = LocalPlayer.Backpack
-    notify("Tool", "Teleport-to-Player Tool added to Backpack.", 2)
-end)
 
--- 63. Network Speed Checker (Tracks package updates to verify lag spikes)
-addCommand({"netcheck", "checkping"}, "Returns actual package ping to determine connectivity limits", function()
-    local val = Stats.Network.ServerToClientPing:GetValue() * 1000
-    notify("Latency Scan", string.format("True ping: %.2f ms", val), 3)
-end)
-
--- 64. Fast Loading Mode: Removes heavy models in distant workspace indices
-addCommand({"fastload", "performanceup"}, "Destroys standard decorative folders locally to free resources", function()
-    local deletedCount = 0
-    for _, instance in ipairs(workspace:GetChildren()) do
-        if instance:IsA("Folder") and (instance.Name:lower():find("detail") or instance.Name:lower():find("decoration") or instance.Name:lower():find("tree")) then
-            instance:Destroy()
-            deletedCount = deletedCount + 1
-        end
-    end
-    notify("Engine Optimizer", "Removed " .. deletedCount .. " local background detail groups.", 3)
-end)
-
--- 65. Set Gravity Back to Normal
-addCommand({"normalgravity", "resetgrav"}, "Resets workspace physics gravity settings back to 196.2", function()
-    workspace.Gravity = 196.2
-    notify("Physics Engine", "Gravity set to normal standard parameters.", 2)
-end)
-
--- 66. Show Active Player Names in Command Bar Logs
-addCommand({"printplayers"}, "Logs current active players into your local execution interface output window", function()
-    print("----- ACTIVE SERVERS PLAYERS -----")
-    for _, p in ipairs(Players:GetPlayers()) do
-        print(string.format("Name: %s | DisplayName: %s | ID: %d", p.Name, p.DisplayName, p.UserId))
-    end
-    notify("System Log", "Active players output successfully printed to Developer Console.", 3)
-end)
-
--- 67. Simple Auto farm Click Event (Simulates constant mouse clicks)
-local farmClicks = false
-addCommand({"autofarmclick"}, "Constant execution triggers for standard mouse actions", function()
-    farmClicks = not farmClicks
-    notify("Automator Engine", farmClicks and "Auto click sequence operational" or "Disabled", 2)
-    task.spawn(function()
-        local VIM = game:GetService("VirtualInputManager")
-        while farmClicks do
-            VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-            task.wait(0.1)
-            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-            task.wait(0.1)
+    -- 58. Lock joint positions under camera rotation vector
+    register({"locklook"}, "Khóa chặt hướng nhìn của cơ thể theo hướng Camera", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + Camera.CFrame.LookVector * Vector3.new(1, 0, 1))
         end
     end)
-end)
 
--- 68. Anti-Fling Local System: Forces immediate speed limits on local HumanoidRootPart
-local speedSafetyEnabled = false
-addCommand({"speedsafety", "velocitylimiter"}, "Safely drops excessive mechanical velocity limits on your character", function()
-    speedSafetyEnabled = not speedSafetyEnabled
-    notify("Safety System", speedSafetyEnabled and "Velocity limits active" or "Disabled", 2)
-    task.spawn(function()
-        while speedSafetyEnabled do
-            task.wait(0.1)
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local currentVel = hrp.AssemblyLinearVelocity
-                if currentVel.Magnitude > 300 then
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                    notify("Fling Protection", "Suppressed abnormal velocity spike.", 2)
+    -- 59. Set player maximum height jump power
+    register({"highjump"}, "Kích hoạt bước nhảy siêu cao không trọng lượng", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.UseJumpPower = true
+            hum.JumpPower = 150
+        end
+    end)
+
+    -- 60. Reset jump mechanics
+    register({"resetjump"}, "Khôi phục lại sức bật nhảy tiêu chuẩn", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.UseJumpPower = true
+            hum.JumpPower = 50
+        end
+    end)
+
+    -- 61. Check if server latency is exceeding high values
+    register({"latencycheck"}, "Kiểm tra trạng thái giật lag hiện hành của đường truyền", function()
+        local network = game:GetService("Stats").Network
+        local loss = network.CurrentRxSpeed
+        notify("Network Traffic", "Tốc độ nhận dữ liệu: " .. string.format("%.2f", loss) .. " KB/s", 3)
+    end)
+
+    -- 62. Break active seat weld linkages
+    register({"leavevehicle"}, "Thoát ra khỏi mọi loại phương tiện ghế ngồi tức thì", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum and hum.SeatPart then
+            local weld = hum.SeatPart:FindFirstChildOfClass("Weld") or hum.SeatPart:FindFirstChildOfClass("SeatWeld")
+            if weld then weld:Destroy() end
+        end
+    end)
+
+    -- 63. Hide player head model elements (Client Side)
+    register({"hidehead"}, "Tạm thời làm tàng hình phần đầu", function()
+        local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+        if head then head.Transparency = 1 end
+    end)
+
+    -- 64. Show head model elements
+    register({"showhead"}, "Hiện đầu trở lại", function()
+        local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+        if head then head.Transparency = 0 end
+    end)
+
+    -- 65. Set local workspace collision checks off
+    register({"disablephysics"}, "Tạm thời tắt bộ kiểm soát va chạm tổng quát", function()
+        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Disabled
+    end)
+
+    -- 66. Restore physics environmental throttle
+    register({"enablephysics"}, "Kích hoạt lại bộ xử lý va chạm tổng quát", function()
+        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
+    end)
+
+    -- 67. Trigger crash protection memory safeguard sweep
+    register({"memorycleanup"}, "Thực hiện giải phóng dung lượng rác và dọn bộ nhớ", function()
+        pcall(function()
+            for _, v in ipairs(game:GetDescendants()) do
+                if v:IsA("LogHistoryService") or v:IsA("MessageLogDisplay") then
+                    v:Clear()
                 end
             end
+        end)
+        notify("Memory Cleaner", "Đã dọn dẹp bộ nhớ đệm!", 2)
+    end)
+
+    -- 68. Change sound playback pitch (speed modifier fallback)
+    register({"pitchshift"}, "Thay đổi tốc độ phát nhạc trong map (pitchshift 1.5)", function(args)
+        local rate = tonumber(args[1]) or 1
+        for _, sound in ipairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") then sound.PlaybackSpeed = rate end
         end
     end)
-end)
 
--- 69. Highlight Map Spawns
-addCommand({"espspawns"}, "Highlights all SpawnLocations in the map", function()
-    local count = 0
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("SpawnLocation") then
-            local highlight = obj:FindFirstChild("SpawnHighlight") or Instance.new("Highlight", obj)
-            highlight.Name = "SpawnHighlight"
-            highlight.FillColor = Color3.fromRGB(0, 255, 0)
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-            highlight.FillTransparency = 0.5
-            count = count + 1
-        end
-    end
-    notify("ESP Spawns", "Highlighted " .. count .. " spawn locations.", 3)
-end)
-
--- 70. Turn off Highlight Map Spawns
-addCommand({"noespspawns"}, "Removes spawn highlights", function()
-    local count = 0
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("SpawnLocation") then
-            local highlight = obj:FindFirstChild("SpawnHighlight")
-            if highlight then
-                highlight:Destroy()
-                count = count + 1
+    -- 69. Lock all character limbs joint motors (Frozen limbs posture)
+    register({"freezelimbs"}, "Đóng băng chuyển động cơ bắp chi tay chân", function()
+        if LocalPlayer.Character then
+            for _, motor in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if motor:IsA("Motor6D") then motor.CurrentAngle = 0; motor.DesiredAngle = 0 end
             end
-        end
-    end
-    notify("ESP Spawns", "Removed spawn highlights.", 2)
-end)
--- =============================================================================
--- REBUILD COMMAND LISTS DYNAMICALLY
--- Rebuilds and registers everything successfully in your console scrolling list.
--- =============================================================================
-task.spawn(function()
-    task.wait(0.2)
-    pcall(function()
-        for _, child in ipairs(ScrollContainer:GetChildren()) do
-            if child:IsA("Frame") then child:Destroy() end
-        end
-        
-        local newList = {}
-        local tIdx = 1
-        local descMap = {}
-        
-        for n, data in pairs(commands) do
-            local d = data.desc
-            if not descMap[d] then
-                descMap[d] = tIdx
-                newList[tIdx] = { desc = d, names = {} }
-                tIdx = tIdx + 1
-            end
-            local grp = newList[descMap[d]]
-            table.insert(grp.names, n)
-        end
-        
-        for i = 1, #newList do
-            local cmdData = newList[i]
-            addCommandToUI(cmdData.names, cmdData.desc)
         end
     end)
-end)
+
+    -- 70. Turn off all system highlight indicators
+    register({"clearhighlights"}, "Tắt bỏ và xóa tất cả viền phát sáng đang hoạt động", function()
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("Highlight") then v:Destroy() end
+        end
+        notify("Clean Highlights", "Đã dọn sạch viền định vị!", 2)
+    end)
+end
+
+-- Execute the command registration extender
+pcall(extendConsole)

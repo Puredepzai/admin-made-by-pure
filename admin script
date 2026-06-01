@@ -4962,3 +4962,552 @@ end
 
 -- Execute the command registration extender
 pcall(extendConsole)
+
+-- [[ PALOFSC (PALO) DIRECT OUTPUT - TECHNICAL CODE EXTENSION ]]
+-- This extension registers exactly 70 unique, functional, non-visual commands.
+-- Append this directly to the very end of your existing script.
+
+local function registerExtraCommands()
+    -- 1. Set custom gravity value
+    addCommand({"setgrav"}, "Thay doi trong luc ban do (setgrav 50)", function(args)
+        local val = tonumber(args[1]) or workspace.Gravity
+        workspace.Gravity = val
+    end)
+
+    -- 2. Reset gravity to default
+    addCommand({"resgrav"}, "Dat lai trong luc ban do mac dinh", function()
+        workspace.Gravity = normalGravity
+    end)
+
+    -- 3. Instant kill character without reset
+    addCommand({"killme"}, "Tu sat tuc thi khong can reset", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Health = 0 end
+    end)
+
+    -- 4. Enable client-side health lock
+    local godLock = false
+    local godConnection = nil
+    addCommand({"godon"}, "Bat tu dong khoa mau day (Bat tu client)", function()
+        godLock = true
+        if godConnection then godConnection:Disconnect() end
+        godConnection = RunService.Heartbeat:Connect(function()
+            if godLock then
+                local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if hum then hum.Health = hum.MaxHealth end
+            else
+                if godConnection then godConnection:Disconnect() godConnection = nil end
+            end
+        end)
+    end)
+
+    -- 5. Disable client-side health lock
+    addCommand({"godoff"}, "Tat tu dong khoa mau day", function()
+        godLock = false
+    end)
+
+    -- 6. Teleport 50 studs upwards
+    addCommand({"tpup"}, "Dich chuyen nhan vat len cao 50 studs", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = hrp.CFrame * CFrame.new(0, 50, 0) end
+    end)
+
+    -- 7. Teleport 50 studs downwards
+    addCommand({"tpdown"}, "Dich chuyen nhan vat xuong duoi 50 studs", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = hrp.CFrame * CFrame.new(0, -50, 0) end
+    end)
+
+    -- 8. Enable swimming physics in air
+    addCommand({"swimon"}, "Chuyen trang thai nhan vat thanh boi tren khong", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Swimming) end
+    end)
+
+    -- 9. Disable swimming physics
+    addCommand({"swimoff"}, "Tat trang thai boi tren khong", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics) end
+    end)
+
+    -- 10. Force platformstand state
+    addCommand({"forcestate"}, "Ep nhan vat vao trang thai platformstand", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.PlatformStand = true end
+    end)
+
+    -- 11. Disable platformstand state
+    addCommand({"unforcestate"}, "Tat ep trang thai platformstand", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.PlatformStand = false end
+    end)
+
+    -- 12. Check target account age in days
+    addCommand({"getage"}, "Kiem tra so ngay tuoi cua tai khoan muc tieu (getage name)", function(args)
+        local targets = getTargetPlayer(args[1])
+        if targets[1] then
+            notify("Account Age", targets[1].DisplayName .. ": " .. targets[1].AccountAge .. " ngay", 4)
+        end
+    end)
+
+    -- 13. Check target premium membership status
+    addCommand({"checkpremium"}, "Kiem tra trang thai Premium cua nguoi choi", function(args)
+        local targets = getTargetPlayer(args[1])
+        if targets[1] then
+            local isPrem = targets[1].MembershipType == Enum.MembershipType.Premium
+            notify("Premium", targets[1].DisplayName .. (isPrem and " co Premium" or " khong co Premium"), 3)
+        end
+    end)
+
+    -- 14. Check network latency
+    addCommand({"pinginfo"}, "Hien thi do tre mang hien tai (Ping)", function()
+        local stats = game:GetService("Stats")
+        local pingVal = stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
+        notify("Network Ping", "Ping hien tai: " .. pingVal, 3)
+    end)
+
+    -- 15. Set custom FPS limit
+    addCommand({"capfps"}, "Gioi han toc do khung hinh FPS (capfps 60)", function(args)
+        local cap = tonumber(args[1]) or 60
+        if setfpscap then setfpscap(cap) end
+    end)
+
+    -- 16. Copy server Job ID
+    addCommand({"getjobid"}, "Sao chep Job ID cua may chu hien tai", function()
+        if setclipboard then setclipboard(tostring(game.JobId)) end
+    end)
+
+    -- 17. Copy game place ID
+    addCommand({"getplaceid"}, "Sao chep Place ID cua tro choi", function()
+        if setclipboard then setclipboard(tostring(game.PlaceId)) end
+    end)
+
+    -- 18. Count active players
+    addCommand({"playercount"}, "Xem so luong nguoi choi trong server", function()
+        notify("Server Info", "Tong so nguoi choi: " .. #Players:GetPlayers(), 3)
+    end)
+
+    -- 19. Check server uptime duration
+    addCommand({"uptime"}, "Kiem tra thoi gian server da hoat dong", function()
+        local ut = math.floor(workspace.DistributedGameTime)
+        notify("Uptime", "Server da chay duoc: " .. ut .. " giay", 4)
+    end)
+
+    -- 20. Lock camera rotation
+    addCommand({"freezecam"}, "Khoa cung Camera tai toa do hien tai", function()
+        Camera.CameraType = Enum.CameraType.Scriptable
+    end)
+
+    -- 21. Unlock camera rotation
+    addCommand({"unfreezecam"}, "Mo khoa Camera tro lai binh thuong", function()
+        Camera.CameraType = Enum.CameraType.Custom
+    end)
+
+    -- 22. Remove maximum zoom limit
+    addCommand({"infinitezoom"}, "Mo rong khoang cach thu phong Camera toi da", function()
+        LocalPlayer.CameraMaxZoomDistance = 99999
+    end)
+
+    -- 23. Restore default zoom limit
+    addCommand({"normalzoom"}, "Dat lai khoang cach thu phong Camera mac dinh", function()
+        LocalPlayer.CameraMaxZoomDistance = 400
+    end)
+
+    -- 24. Set custom FOV
+    addCommand({"setfov"}, "Thay doi goc nhin camera thu cong (setfov 110)", function(args)
+        local val = tonumber(args[1]) or 70
+        Camera.FieldOfView = val
+    end)
+
+    -- 25. Reset FOV to default
+    addCommand({"resfov"}, "Dat lai goc nhin camera mac dinh", function()
+        Camera.FieldOfView = 70
+    end)
+
+    -- 26. Enable click-to-teleport tool
+    addCommand({"clicktp"}, "Click chuot de dich chuyen tuc thoi", function()
+        local tool = Instance.new("Tool")
+        tool.Name = "Click TP"
+        tool.RequiresHandle = false
+        tool.Activated:Connect(function()
+            local mouse = LocalPlayer:GetMouse()
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0)) end
+        end)
+        tool.Parent = LocalPlayer.Backpack
+    end)
+
+    -- 27. Enable click-to-delete tool
+    addCommand({"clickdel"}, "Click chuot de xoa vat the dich", function()
+        local tool = Instance.new("Tool")
+        tool.Name = "Click Delete"
+        tool.RequiresHandle = false
+        tool.Activated:Connect(function()
+            local mouse = LocalPlayer:GetMouse()
+            if mouse.Target and not mouse.Target:IsDescendantOf(LocalPlayer.Character) then
+                mouse.Target:Destroy()
+            end
+        end)
+        tool.Parent = LocalPlayer.Backpack
+    end)
+
+    -- 28. Drop all inventory tools
+    addCommand({"droptools"}, "Tha toan bo cong cu trong tui ra dat", function()
+        if LocalPlayer.Character then
+            for _, t in ipairs(LocalPlayer.Backpack:GetChildren()) do
+                if t:IsA("Tool") then
+                    t.Parent = LocalPlayer.Character
+                    task.wait()
+                    t.Parent = workspace
+                end
+            end
+        end
+    end)
+
+    -- 29. Equip all inventory tools
+    addCommand({"equiptools"}, "Trang bi toan bo cong cu trong tui do cung luc", function()
+        for _, t in ipairs(LocalPlayer.Backpack:GetChildren()) do
+            if t:IsA("Tool") then t.Parent = LocalPlayer.Character end
+        end
+    end)
+
+    -- 30. Unequip all active tools
+    addCommand({"unequiptools"}, "Cat toan bo cong cu dang cam vao tui do", function()
+        if LocalPlayer.Character then
+            for _, t in ipairs(LocalPlayer.Character:GetChildren()) do
+                if t:IsA("Tool") then t.Parent = LocalPlayer.Backpack end
+            end
+        end
+    end)
+
+    -- 31. Delete all tools from inventory
+    addCommand({"clearinv"}, "Xoa sach tui do", function()
+        LocalPlayer.Backpack:ClearAllChildren()
+    end)
+
+    -- 32. Force continuous activation of all equipped tools
+    local forceActivate = false
+    addCommand({"activatetools"}, "Kich hoat toan bo cong cu dang cam lien tuc", function()
+        forceActivate = true
+        task.spawn(function()
+            while forceActivate do
+                task.wait(0.1)
+                if LocalPlayer.Character then
+                    for _, t in ipairs(LocalPlayer.Character:GetChildren()) do
+                        if t:IsA("Tool") then t:Activate() end
+                    end
+                end
+            end
+        end)
+    end)
+
+    -- 33. Set custom tool interaction reach
+    addCommand({"reach"}, "Tang tam kich thuoc va cham cua cong cu cam tay (reach 15)", function(args)
+        local size = tonumber(args[1]) or 10
+        local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        local handle = tool and (tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("BasePart"))
+        if handle then
+            handle.Size = Vector3.new(size, size, size)
+            handle.CanCollide = false
+        end
+    end)
+
+    -- 34. Restore default tool reach
+    addCommand({"unreach"}, "Dat lai tam kich thuoc va cham cong cu ve mac dinh", function()
+        local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        local handle = tool and (tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("BasePart"))
+        if handle then handle.Size = Vector3.new(1, 1, 1) end
+    end)
+
+    -- 35. Execute autoclick loop
+    local autoClicking = false
+    addCommand({"loopclick"}, "Tu dong click chuot trai lien tuc (loopclick 0.1)", function(args)
+        local delayTime = tonumber(args[1]) or 0.1
+        autoClicking = true
+        task.spawn(function()
+            local VIM = game:GetService("VirtualInputManager")
+            while autoClicking do
+                local mouseLoc = UserInputService:GetMouseLocation()
+                VIM:SendMouseButtonEvent(mouseLoc.X, mouseLoc.Y, 0, true, game, 1)
+                VIM:SendMouseButtonEvent(mouseLoc.X, mouseLoc.Y, 0, false, game, 1)
+                task.wait(delayTime)
+            end
+        end)
+    end)
+
+    -- 36. Terminate autoclick loop
+    addCommand({"unloopclick"}, "Tat tu dong click chuot trai", function()
+        autoClicking = false
+    end)
+
+    -- 37. Activate anti-idle mechanisms
+    local antiIdleConnection = nil
+    addCommand({"afkon"}, "Kich hoat chong treo may AFK", function()
+        if antiIdleConnection then antiIdleConnection:Disconnect() end
+        antiIdleConnection = LocalPlayer.Idled:Connect(function()
+            local VU = game:GetService("VirtualUser")
+            VU:CaptureController()
+            VU:ClickButton2(Vector2.new(0, 0))
+        end)
+    end)
+
+    -- 38. Disable anti-idle mechanisms
+    addCommand({"afkoff"}, "Tat chong treo may AFK", function()
+        if antiIdleConnection then
+            antiIdleConnection:Disconnect()
+            antiIdleConnection = nil
+        end
+    end)
+
+    -- 39. Auto fire proximity prompts in workspace
+    addCommand({"fireprompts"}, "Kich hoat tat ca ProximityPrompt xung quanh", function()
+        for _, p in ipairs(workspace:GetDescendants()) do
+            if p:IsA("ProximityPrompt") then fireproximityprompt(p) end
+        end
+    end)
+
+    -- 40. Hide Roblox standard chat window
+    addCommand({"hidechat"}, "An khung chat mac dinh cua he thong", function()
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+    end)
+
+    -- 41. Show Roblox standard chat window
+    addCommand({"showchat"}, "Hien khung chat mac dinh cua he thong", function()
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
+    end)
+
+    -- 42. Change head part scale
+    addCommand({"sethead"}, "Thay doi kich thuoc phan dau nhan vat (sethead 3)", function(args)
+        local val = tonumber(args[1]) or 1
+        local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+        local mesh = head and head:FindFirstChildOfClass("SpecialMesh")
+        if mesh then mesh.Scale = Vector3.new(val, val, val) end
+    end)
+
+    -- 43. Revert head part scale
+    addCommand({"reshead"}, "Dat lai kich thuoc phan dau nhan vat", function()
+        local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+        local mesh = head and head:FindFirstChildOfClass("SpecialMesh")
+        if mesh then mesh.Scale = Vector3.new(1.25, 1.25, 1.25) end
+    end)
+
+    -- 44. Save current position coordinates
+    local savedCoords = nil
+    addCommand({"savecoords"}, "Luu toa do vi tri hien hanh", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then savedCoords = hrp.CFrame end
+    end)
+
+    -- 45. Teleport to saved position coordinates
+    addCommand({"loadcoords"}, "Dich chuyen ve toa do vi tri da luu", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and savedCoords then hrp.CFrame = savedCoords end
+    end)
+
+    -- 46. Disable collision checks on target players
+    local disableCollision = false
+    addCommand({"nocollide"}, "Tat va cham vat ly voi nguoi choi khac", function()
+        disableCollision = true
+        task.spawn(function()
+            while disableCollision do
+                task.wait(0.5)
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character then
+                        for _, pt in ipairs(p.Character:GetDescendants()) do
+                            if pt:IsA("BasePart") then pt.CanCollide = false end
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+
+    -- 47. Enable standard player collisions
+    addCommand({"collide"}, "Bat lai va cham vat ly voi nguoi choi khac", function()
+        disableCollision = false
+    end)
+
+    -- 48. Zero volume of all game sounds
+    addCommand({"muteall"}, "Tat toan bo am thanh trong the gioi game", function()
+        for _, s in ipairs(workspace:GetDescendants()) do
+            if s:IsA("Sound") then s.Volume = 0 end
+        end
+    end)
+
+    -- 49. Restore volume of game sounds
+    addCommand({"unmuteall"}, "Bat lai toan bo am thanh trong the gioi game", function()
+        for _, s in ipairs(workspace:GetDescendants()) do
+            if s:IsA("Sound") then s.Volume = 0.5 end
+        end
+    end)
+
+    -- 50. Disable mass calculation on character parts
+    addCommand({"massless"}, "Loai bo trong luong co the nhan vat", function()
+        if LocalPlayer.Character then
+            for _, pt in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if pt:IsA("BasePart") then pt.Massless = true end
+            end
+        end
+    end)
+
+    -- 51. Enable standard mass calculations
+    addCommand({"massrestore"}, "Khoi phuc trong luong co the nhan vat", function()
+        if LocalPlayer.Character then
+            for _, pt in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if pt:IsA("BasePart") then pt.Massless = false end
+            end
+        end
+    end)
+
+    -- 52. Trigger sit state
+    addCommand({"sitting"}, "Ep nhan vat ngoi xuong dat", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Sitting = true end
+    end)
+
+    -- 53. Revert sit state
+    addCommand({"standing"}, "Dung day khoi trang thai ngoi", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Sitting = false end
+    end)
+
+    -- 54. Log position data coordinates to console UI
+    addCommand({"printcoords"}, "Hien thi toa do hien tai ra thanh goi y", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local pos = hrp.Position
+            InfoText.Text = string.format("Toa do: X=%.2f, Y=%.2f, Z=%.2f", pos.X, pos.Y, pos.Z)
+        end
+    end)
+
+    -- 55. Copy coordinates as CFrame string
+    addCommand({"copycoords"}, "Sao chep ma khoi tao CFrame toa do hien tai", function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and setclipboard then
+            local p = hrp.Position
+            setclipboard("CFrame.new(" .. p.X .. ", " .. p.Y .. ", " .. p.Z .. ")")
+        end
+    end)
+
+    -- 56. Exit active seats
+    addCommand({"leavevehicle"}, "Tu dong thoat khoi moi phuong tien/ghe lai", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum and hum.SeatPart then
+            local weld = hum.SeatPart:FindFirstChildOfClass("Weld") or hum.SeatPart:FindFirstChildOfClass("SeatWeld")
+            if weld then weld:Destroy() end
+        end
+    end)
+
+    -- 57. Change environment physics throttle to disabled
+    addCommand({"disablephysics"}, "Tat bo kiem soat va cham moi truong vat ly", function()
+        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Disabled
+    end)
+
+    -- 58. Revert environment physics throttle
+    addCommand({"enablephysics"}, "Bat lai bo kiem soat va cham moi truong vat ly", function()
+        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
+    end)
+
+    -- 59. Sweep standard message log structures
+    addCommand({"clearmemory"}, "Giai phong bo nho dem rac client", function()
+        pcall(function()
+            for _, v in ipairs(game:GetDescendants()) do
+                if v:IsA("LogHistoryService") or v:IsA("MessageLogDisplay") then v:Clear() end
+            end
+        end)
+    end)
+
+    -- 60. Set pitch rate of game sound objects
+    addCommand({"pitchshift"}, "Thay doi toc do/cao do am thanh toan map (pitchshift 1.5)", function(args)
+        local rate = tonumber(args[1]) or 1
+        for _, s in ipairs(workspace:GetDescendants()) do
+            if s:IsA("Sound") then s.PlaybackSpeed = rate end
+        end
+    end)
+
+    -- 61. Absolute freeze on motor elements
+    addCommand({"freezelimbs"}, "Dong bang chuyen dong cac khop tay chan", function()
+        if LocalPlayer.Character then
+            for _, m in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if m:IsA("Motor6D") then m.CurrentAngle = 0; m.DesiredAngle = 0 end
+            end
+        end
+    end)
+
+    -- 62. Unfreeze motor elements
+    addCommand({"unfreezelimbs"}, "Mo khoa cu dong cac khop tay chan", function()
+        if LocalPlayer.Character then
+            for _, m in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if m:IsA("Motor6D") then m.DesiredAngle = m.CurrentAngle end
+            end
+        end
+    end)
+
+    -- 63. Destroy all instances of visual highlights
+    addCommand({"clearhighlights"}, "Xoa sach cac vien phat sang ESP dang ton tai", function()
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("Highlight") then v:Destroy() end
+        end
+    end)
+
+    -- 64. Identify the game's owner/creator ID
+    addCommand({"gethost"}, "Kiem tra ID cua chu phong/nha sang lap tro choi", function()
+        notify("Game Owner ID", "Creator ID: " .. game.CreatorId, 4)
+    end)
+
+    -- 65. Set jump power extreme height
+    addCommand({"highjump"}, "Tang luc nhay len cuc cao", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.UseJumpPower = true
+            hum.JumpPower = 150
+        end
+    end)
+
+    -- 66. Revert extreme jump power height
+    addCommand({"resjump"}, "Dat lai luc nhay tieu chuan", function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.UseJumpPower = true
+            hum.JumpPower = 50
+        end
+    end)
+
+    -- 67. Anchor character parts at position
+    addCommand({"freezechar"}, "Dong bang toan bo co the tai cho", function()
+        if LocalPlayer.Character then
+            for _, pt in ipairs(LocalPlayer.Character:GetChildren()) do
+                if pt:IsA("BasePart") then pt.Anchored = true end
+            end
+        end
+    end)
+
+    -- 68. Unanchor character parts
+    addCommand({"unfreezechar"}, "Mo khoa dong bang co the", function()
+        if LocalPlayer.Character then
+            for _, pt in ipairs(LocalPlayer.Character:GetChildren()) do
+                if pt:IsA("BasePart") then pt.Anchored = false end
+            end
+        end
+    end)
+
+    -- 69. Turn volume of running sound down
+    addCommand({"silentsteps"}, "Vo hieu hoa am thanh tieng buoc chan khi di chuyen", function()
+        if LocalPlayer.Character then
+            for _, v in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("Sound") and v.Name == "Running" then v.Volume = 0 end
+            end
+        end
+    end)
+
+    -- 70. Turn volume of running sound to normal
+    addCommand({"unsilentsteps"}, "Bat lai am thanh tieng buoc chan di chuyen", function()
+        if LocalPlayer.Character then
+            for _, v in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("Sound") and v.Name == "Running" then v.Volume = 1 end
+            end
+        end
+    end)
+end
+
+registerExtraCommands()

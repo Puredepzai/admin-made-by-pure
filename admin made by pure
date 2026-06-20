@@ -1893,51 +1893,67 @@ local function removeNameESP(player)
     end
 end
 
--- ESP Thường (Toggle)
-addCommand({"esp"}, "Bật/Tắt định vị Highlight và Name ESP", function()
+-- =======================================================
+-- FIX LỆNH ESP - TẮT LÀ BIẾN MẤT HOÀN TOÀN NGAY LẬP TỨC
+-- =======================================================
+addCommand({"esp"}, "Bật/Tắt định vị khung viền Highlight và Name ESP dứt điểm", function()
     espActive = not espActive
     if espActive then
-        notify("Định vị ESP", "ĐÃ BẬT | Vẽ khung viền Highlight và Name ESP", 3)
+        notify("Định vị ESP", "ĐÃ BẬT | Tự động cập nhật vị trí toàn server", 3)
         task.spawn(function()
             while espActive do
-                task.wait(1)
                 for _, player in ipairs(Players:GetPlayers()) do
                     if player ~= LocalPlayer and player.Character then
-                        local highlight = player.Character:FindFirstChild("ESPHighlight")
+                        local char = player.Character
+                        -- Khởi tạo Highlight
+                        local highlight = char:FindFirstChild("ESPHighlight")
                         if not highlight then
                             highlight = Instance.new("Highlight")
                             highlight.Name = "ESPHighlight"
-                            highlight.FillColor = getgenv().ThemeColor
+                            highlight.FillColor = getgenv().ThemeColor or Color3.fromRGB(0, 170, 255)
                             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                             highlight.FillTransparency = 0.5
-                            highlight.Parent = player.Character
+                            highlight.Parent = char
                         end
+                        -- Khởi tạo Name ESP
                         createNameESP(player, getgenv().ThemeColor)
                     end
                 end
+                task.wait(0.5) -- Tần suất quét mượt mà
             end
         end)
     else
-        notify("Định vị ESP", "ĐÃ TẮT | Xóa bỏ mọi Highlight và nhãn định vị", 3)
+        notify("Định vị ESP", "ĐÃ TẮT | Xóa sạch sẽ mọi dấu vết định vị", 3)
+        -- Quét và dọn dẹp triệt để trên toàn bộ Workspace ngay khi tắt
         for _, player in ipairs(Players:GetPlayers()) do
-            if player.Character then
-                local highlight = player.Character:FindFirstChild("ESPHighlight")
-                if highlight then highlight:Destroy() end
-                removeNameESP(player)
+            pcall(function()
+                if player.Character then
+                    local highlight = player.Character:FindFirstChild("ESPHighlight")
+                    if highlight then highlight:Destroy() end
+                    removeNameESP(player)
+                end
+            end)
+        end
+        -- Quét diện rộng phòng hờ bản sao ESP lỗi bám dính trên Workspace
+        for _, desc in ipairs(workspace:GetDescendants()) do
+            if desc.Name == "ESPHighlight" or desc.Name == "PureNameESP" then
+                pcall(function() desc:Destroy() end)
             end
         end
     end
 end)
 
--- ESP Team (Toggle)
+-- ESP Team (Toggle) - BẢN ĐÃ FIX TẮT LÀ MẤT LUÔN NGAY LẬP TỨC
 addCommand({"espteam"}, "Bật/Tắt định vị theo màu đội", function()
     espTeamActive = not espTeamActive
     if espTeamActive then
         notify("ESP Team", "ĐÃ BẬT | Định vị phân biệt theo màu đội", 3)
         task.spawn(function()
             while espTeamActive do
-                task.wait(1)
                 for _, player in ipairs(Players:GetPlayers()) do
+                    -- Kiểm tra điều kiện ngắt vòng lặp khẩn cấp để không bị tạo đè khi vừa ấn tắt
+                    if not espTeamActive then break end
+                    
                     if player ~= LocalPlayer and player.Character then
                         local color = player.TeamColor.Color
                         local highlight = player.Character:FindFirstChild("ESPHighlightTeam")
@@ -1952,10 +1968,12 @@ addCommand({"espteam"}, "Bật/Tắt định vị theo màu đội", function()
                         createNameESP(player, color)
                     end
                 end
+                task.wait(1) -- Đảo xuống cuối để không bị delay chu kỳ quét khi tắt
             end
         end)
     else
         notify("ESP Team", "ĐÃ TẮT", 3)
+        -- 1. Dọn dẹp trên danh sách người chơi hiện tại
         for _, player in ipairs(Players:GetPlayers()) do
             if player.Character then
                 local highlight = player.Character:FindFirstChild("ESPHighlightTeam")
@@ -1963,8 +1981,15 @@ addCommand({"espteam"}, "Bật/Tắt định vị theo màu đội", function()
                 removeNameESP(player)
             end
         end
+        -- 2. Quét diện rộng toàn Workspace xóa tận gốc các bản sao Highlight Team bị kẹt ngầm
+        for _, desc in ipairs(workspace:GetDescendants()) do
+            if desc.Name == "ESPHighlightTeam" then
+                pcall(function() desc:Destroy() end)
+            end
+        end
     end
 end)
+
 
 -- 10. HipHeight (Toggle khi gõ lại hh)
 addCommand({"hipheight", "hh"}, "Điều chỉnh độ cao của hông cơ thể", function(args)
@@ -2405,14 +2430,68 @@ addCommand({"flashbang"}, "Kích hoạt hiệu ứng nổ đèn flash lóa sáng
     end)
 end)
 
--- 33. Anti Lag / Potato Mode (Toggle)
-addCommand({"antilag", "potato"}, "Tối giản loại bỏ hoàn toàn texture dọn dẹp vật thể", function()
-    if potatoActive then
-        notify("Potato Mode", "Vui lòng rejoin để khôi phục hoàn toàn texture map.", 3)
-    else
-        activatePotatoMode()
+-- =======================================================
+-- RE-DESIGN LỆNH FIX LAG / POTATO MODE SIÊU CẤP TỐI ƯU
+-- =======================================================
+addCommand({"antilag", "potato", "boost"}, "Siêu tối ưu FPS, dọn RAM, mở khóa FPS và xóa hiệu ứng", function()
+    potatoActive = true
+    notify("Tối Ưu Hệ Thống", "Đang tiến hành dọn dẹp RAM & Tăng tốc độ khung hình...", 4)
+    
+    -- 1. Mở khóa FPS và tinh chỉnh luồng xử lý luân phiên của Roblox Engine
+    pcall(function()
+        if setfpscap then setfpscap(999) end
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        game:GetService("RunService"):Set3dRenderingEnabled(true)
+    end)
+    
+    -- 2. Dọn rác bộ nhớ RAM Client ngầm
+    pcall(function()
+        gcinfo() -- Giải phóng Garbage Collection ép buộc dọn RAM ngay lập tức
+    end)
+    
+    -- 3. Xóa triệt để mọi hiệu ứng môi trường nặng gây drop khung hình
+    pcall(function()
+        Lighting:ClearAllChildren()
+        local terrain = workspace:FindFirstChildOfClass("Terrain")
+        if terrain then
+            terrain.WaterWaveSize = 0
+            terrain.WaterWaveSpeed = 0
+            terrain.WaterReflectance = 0
+            terrain.WaterTransparency = 0
+        end
+    end)
+    
+    -- 4. Loại bỏ Texture, Decal, Hiệu ứng hạt trên diện rộng để giải phóng GPU
+    local function cleanInstance(v)
+        if v:IsA("Decal") or v:IsA("Texture") or v:IsA("ParticleEmitter") or v:IsA("Trail") 
+        or v:IsA("Sparkles") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Explosion") then
+            v:Destroy()
+        elseif v:IsA("BasePart") and not v:IsA("MeshPart") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+            pcall(function() v.TextureID = "" end)
+        elseif v:IsA("MeshPart") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+            pcall(function() v.TextureID = "" end)
+            pcall(function() v.MeshId = "" end)
+        end
     end
+
+    for _, v in pairs(workspace:GetDescendants()) do
+        cleanInstance(v)
+    end
+    
+    -- Tự động tối ưu các vật thể mới được sinh ra sau này
+    workspace.DescendantAdded:Connect(function(val)
+        if potatoActive then
+            pcall(function() cleanInstance(val) end)
+        end
+    end)
+
+    notify("Potato Mode", "ĐÃ TỐI ƯU SIÊU MƯỢT! Đồ họa đã được nén về mức tối giản.", 4)
 end)
+
 
 -- 34. RTX Graphics (Toggle)
 addCommand({"rtx"}, "Bật/Tắt bộ mô phỏng ánh sáng thực tế Shaders", function()
@@ -3075,103 +3154,557 @@ if autoOpenFlag then
 end
 
 notify("Pure Commander Siêu Cấp!", "Made by Nguyễn Cát Vũ😂🙏", 6)
--- =============================================
--- EMOTE SYSTEM BY 7YD7 - BẢN MỚI (MÀU TRẮNG)
--- GÕ "emote" BẬT/TẮT - HIỂN THỊ TRONG DANH SÁCH
--- =============================================
 
-local EmoteSystem = { Running = false, Script = nil, Loaded = false }
+-- =======================================================
+-- ĐỒNG BỘ 30 CÂU LỆNH VÀO KHUNG COMMAND CỦA PURE COMMANDER
+-- =======================================================
 
-local function loadEmoteScript()
-    if EmoteSystem.Running then
-        EmoteSystem.Running = false
-        _G.EmotesGUIRunning = nil
-        pcall(function()
-            local gui = CoreGui:FindFirstChild("RobloxGui")
-            if gui then
-                local emoteMenu = gui:FindFirstChild("EmotesMenu")
-                if emoteMenu then emoteMenu:Destroy() end
-            end
-            for _, obj in pairs(CoreGui:GetChildren()) do
-                if obj:IsA("ScreenGui") and (obj.Name:match("Emote") or obj.Name:match("7yd7") or obj.Name:match("Settings")) then
-                    obj:Destroy()
-                end
-            end
-            if isfolder and isfolder("7yd7") then delfolder("7yd7") end
-        end)
-        InfoText.Text = "🎭 Đã tắt Emote System"
-        return
-    end
-    
-    if EmoteSystem.Loaded and EmoteSystem.Script then
-        EmoteSystem.Running = true
-        _G.EmotesGUIRunning = true
-        local oldNotify = getgenv().Notify
-        getgenv().Notify = function(data)
-            pcall(function()
-                if data and data.Content then
-                    notify(data.Title or "🎭 Emote", data.Content, data.Duration or 3)
-                end
-            end)
-        end
-        pcall(function() EmoteSystem.Script() end)
-        task.delay(2, function() getgenv().Notify = oldNotify end)
-        InfoText.Text = "🎭 Emote System đã bật! Gõ 'emote' để tắt"
-        return
-    end
-    
-    if not EmoteSystem.Loaded then
-        local success, result = pcall(function()
-            return loadstring(game:HttpGet("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/Emotes.lua"))()
-        end)
-        if success and result then
-            EmoteSystem.Script = result
-            EmoteSystem.Loaded = true
-            EmoteSystem.Running = true
-            _G.EmotesGUIRunning = true
-            local oldNotify = getgenv().Notify
-            getgenv().Notify = function(data)
-                pcall(function()
-                    if data and data.Content then
-                        notify(data.Title or "🎭 Emote", data.Content, data.Duration or 3)
+-- 1. Khung viền hộp định vị (ESP Box)
+local boxESPActive = false
+addCommand({"espbox", "box"}, "Bật/Tắt khung viền hộp 2D bao quanh người chơi", function()
+    boxESPActive = not boxESPActive
+    if boxESPActive then
+        notify("ESP Box", "Đcontrol BẬT | Hiển thị khung viền hộp mục tiêu", 3)
+        task.spawn(function()
+            while boxESPActive do
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local char = p.Character
+                        local box = char:FindFirstChild("PureBox") or Instance.new("SelectionBox")
+                        box.Name = "PureBox"
+                        box.Adornee = char
+                        box.Color3 = getgenv().ThemeColor or Color3.fromRGB(0, 255, 128)
+                        box.LineThickness = 0.05
+                        box.Parent = char
                     end
-                end)
+                end
+                task.wait(1)
             end
-            pcall(function() result() end)
-            task.delay(2, function() getgenv().Notify = oldNotify end)
-            InfoText.Text = "🎭 Emote System đã bật! Gõ 'emote' để tắt"
-        else
-            InfoText.Text = "❌ Không tải được Emote System!"
+        end)
+    else
+        notify("ESP Box", "Đcontrol TẮT | Xóa bỏ toàn bộ khung viền hộp", 3)
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChild("PureBox") then
+                p.Character.PureBox:Destroy()
+            end
         end
     end
-end
-
--- ĐĂNG KÝ LỆNH (MÀU TRẮNG TỰ ĐỘNG THEO THEME)
-addCommand({"emote", "e"}, "Emote System by 7yd7 (Bật/Tắt)", loadEmoteScript)
-addCommand({"stopemote"}, "Tắt Emote System khẩn cấp", function()
-    EmoteSystem.Running = false
-    _G.EmotesGUIRunning = nil
-    pcall(function()
-        local gui = CoreGui:FindFirstChild("RobloxGui")
-        if gui then
-            local emoteMenu = gui:FindFirstChild("EmotesMenu")
-            if emoteMenu then emoteMenu:Destroy() end
-        end
-        for _, obj in pairs(CoreGui:GetChildren()) do
-            if obj:IsA("ScreenGui") and (obj.Name:match("Emote") or obj.Name:match("7yd7") or obj.Name:match("Settings")) then
-                obj:Destroy()
-            end
-        end
-    end)
-    InfoText.Text = "🎭 Đã tắt Emote System khẩn cấp"
 end)
 
--- THÊM VÀO DANH SÁCH LỆNH DƯỚI (MÀU TRẮNG)
+-- 2. Đường kẻ chỉ hướng mục tiêu (Tracer ESP)
+local tracerActive = false
+addCommand({"esptracer", "tracers"}, "Bật/Tắt đường kẻ chỉ hướng tới người chơi", function()
+    tracerActive = not tracerActive
+    if tracerActive then
+        notify("Tracers", "Đcontrol BẬT | Vẽ đường chỉ hướng mục tiêu", 3)
+        task.spawn(function()
+            while tracerActive do
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = p.Character.HumanoidRootPart
+                        local attachment = hrp:FindFirstChild("PureTracerAttachment") or Instance.new("Attachment", hrp)
+                        attachment.Name = "PureTracerAttachment"
+                        
+                        local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if myHrp then
+                            local myAttachment = myHrp:FindFirstChild("PureMyAttachment") or Instance.new("Attachment", myHrp)
+                            myAttachment.Name = "PureMyAttachment"
+                            
+                            local beam = hrp:FindFirstChild("PureTracerBeam") or Instance.new("Beam")
+                            beam.Name = "PureTracerBeam"
+                            beam.Attachment0 = myAttachment
+                            beam.Attachment1 = attachment
+                            beam.Color = ColorSequence.new(getgenv().ThemeColor or Color3.fromRGB(0, 255, 128))
+                            beam.Width0 = 0.05
+                            beam.Width1 = 0.05
+                            beam.FaceCamera = true
+                            beam.Parent = hrp
+                        end
+                    end
+                end
+                task.wait(1)
+            end
+        end)
+    else
+        notify("Tracers", "Đcontrol TẮT", 3)
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character then
+                for _, item in ipairs(p.Character:GetDescendants()) do
+                    if item.Name == "PureTracerBeam" or item.Name == "PureTracerAttachment" then item:Destroy() end
+                end
+            end
+        end
+    end
+end)
+
+-- 3. Theo dõi màn hình người khác (Spectate Toggle)
+addCommand({"spectate", "view"}, "Bật/Tắt theo dõi góc nhìn Camera của người chơi khác", function(args)
+    local myHum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if not myHum then return end
+
+    if Camera.CameraSubject ~= myHum then
+        Camera.CameraSubject = myHum
+        notify("Spectate", "Đcontrol TẮT | Trả Camera về góc nhìn bản thân", 2)
+    else
+        local targets = getTargetPlayer(args[1])
+        if targets and targets[1] and targets[1].Character then
+            local tHum = targets[1].Character:FindFirstChildOfClass("Humanoid")
+            if tHum then
+                Camera.CameraSubject = tHum
+                notify("Spectate", "Đang theo dõi góc nhìn của: " .. targets[1].DisplayName, 3)
+            end
+        else
+            notify("Lỗi", "Không tìm thấy người chơi cần xem", 3)
+        end
+    end
+end)
+
+-- 4. Ctrl + Click dịch chuyển nhanh (Ctrl Click TP)
+local ctrlClickConn = nil
+addCommand({"ctrltp", "clicktp"}, "Bật/Tắt tính năng nhấn Giữ Ctrl + Click chuột trái để dịch chuyển", function()
+    if ctrlClickConn then
+        ctrlClickConn:Disconnect()
+        ctrlClickConn = nil
+        notify("Ctrl TP", "Đcontrol TẮT tính năng Ctrl + Click", 2)
+    else
+        notify("Ctrl TP", "Đcontrol BẬT | Giữ nút Ctrl + Click chuột để dịch chuyển", 3)
+        ctrlClickConn = UserInputService.InputBegan:Connect(function(input, processed)
+            if not processed and input.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                local mouse = LocalPlayer:GetMouse()
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp and mouse.Hit then
+                    hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+                end
+            end
+        end)
+    end
+end)
+
+-- 5. Ánh sáng Fullbright (Xóa bóng tối map)
+local fbActive = false
+addCommand({"fullbright", "fb"}, "Bật/Tắt ánh sáng Fullbright loại bỏ mọi vùng tối trên bản đồ", function()
+    fbActive = not fbActive
+    if fbActive then
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.Brightness = 2
+        notify("Fullbright", "Đcontrol BẬT | Xóa tan bóng đêm", 3)
+    else
+        Lighting.Ambient = Color3.fromRGB(128, 128, 128)
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        notify("Fullbright", "Đcontrol TẮT | Trả về ánh sáng gốc", 3)
+    end
+end)
+
+-- 6. Tải Infinite Yield (Tập lệnh bổ trợ)
+addCommand({"infyield", "iy"}, "Khởi chạy nhanh Script đa năng Infinite Yield", function()
+    notify("Hệ thống", "Đang tải Infinite Yield...", 2)
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeY/infiniteyield/master/source"))()
+    end)
+end)
+
+-- 7. Tự động thoát khi có Admin (Auto Leave)
+local autoLeaveActive = false
+addCommand({"autoleave", "antiadmin"}, "Bật/Tắt tự động thoát Server khi phát hiện Admin vào game", function()
+    autoLeaveActive = not autoLeaveActive
+    if autoLeaveActive then
+        notify("Bảo vệ", "Tự động rời phòng: ĐANG KÍCH HOẠT", 3)
+        Players.PlayerAdded:Connect(function(player)
+            if autoLeaveActive and (player:GetRankInGroup(1200) > 200 or player.UserId == game.CreatorId) then
+                LocalPlayer:Kick("Phát hiện Quản trị viên vừa tham gia!")
+            end
+        end)
+    else
+        notify("Bảo vệ", "Đcontrol HỦY kích hoạt tự động rời phòng", 2)
+    end
+end)
+
+-- 8. Phóng to đầu nhân vật (Head Size)
+addCommand({"headsize", "bighead"}, "Phóng to kích cỡ đầu nhân vật (Gõ lại để reset)", function(args)
+    local sz = tonumber(args[1]) or 4
+    local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+    if head then
+        local mesh = head:FindFirstChildOfClass("SpecialMesh")
+        if head.Size.X == sz then
+            head.Size = Vector3.new(1.2, 1.2, 1.2)
+            if mesh then mesh.Scale = Vector3.new(1.25, 1.25, 1.25) end
+            notify("Kích thước", "Khôi phục kích thước đầu mặc định", 2)
+        else
+            head.Size = Vector3.new(sz, sz, sz)
+            if mesh then mesh.Scale = Vector3.new(sz, sz, sz) end
+            notify("Kích thước", "Thay đổi kích thước đầu lên: " .. sz, 3)
+        end
+    end
+end)
+
+-- 9. Ép nhân vật ngồi (Sit Force)
+addCommand({"sit"}, "Ép trạng thái nhân vật ngồi xuống / đứng lên", function()
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.Sit = not hum.Sit
+        notify("Hành động", "Đcontrol thực thi thay đổi tư thế ngồi", 2)
+    end
+end)
+
+-- 10. Đóng băng nhân vật (Freeze Toggle)
+addCommand({"freeze", "anchor"}, "Bật/Tắt khóa cứng đóng băng cố định tọa độ nhân vật", function()
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Anchored = not hrp.Anchored
+        if hrp.Anchored then
+            notify("Đóng băng", "Nhân vật đã bị khóa cứng vị trí!", 3)
+        else
+            notify("Đóng băng", "Đcontrol giải phóng nhân vật di chuyển tự do.", 2)
+        end
+    end
+end)
+
+-- 13. Bơi trên không trung (Air Swim - Bản sửa lỗi vật lý hoàn chỉnh)
+local swimActive = false
+local swimConnection = nil
+
+addCommand({"swim"}, "Bật/Tắt giả lập môi trường bơi tự do trên không trung", function()
+    swimActive = not swimActive
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if hum and hrp then
+        if swimActive then
+            -- Bật tính năng: Ép trạng thái bơi liên tục theo thời gian thực (Heartbeat)
+            swimConnection = RunService.Heartbeat:Connect(function()
+                if char and hum and hrp then
+                    hum:ChangeState(Enum.HumanoidStateType.Swimming)
+                end
+            end)
+            notify("Air Swim", "Đã BẬT | Nhấn Space để bơi bay lên, C để lặn xuống", 3)
+        else
+            -- Tắt tính năng: Hủy vòng lặp ép trạng thái
+            if swimConnection then
+                swimConnection:Disconnect()
+                swimConnection = nil
+            end
+            -- Trả nhân vật về trạng thái đứng trên cạn thông thường
+            task.wait(0.1)
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+            notify("Air Swim", "Đã TẮT trạng thái bơi trên không", 2)
+        end
+    else
+        notify("Lỗi", "Không tìm thấy dữ liệu nhân vật!", 2)
+    end
+end)
+
+
+-- 12. Xóa mũ/tóc giảm lag (Anti-Hat)
+addCommand({"antihat", "removehats"}, "Xóa toàn bộ phụ kiện mũ và tóc trên người để giảm độ trễ", function()
+    if LocalPlayer.Character then
+        for _, item in ipairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Accessory") then item:Destroy() end
+        end
+        notify("Tối ưu", "Đcontrol dọn dẹp sạch sẽ toàn bộ phụ kiện trên người.", 3)
+    end
+end)
+
+-- 13. Cởi bỏ trang phục quần áo (Remove Clothes)
+addCommand({"antishirt", "removeclothing"}, "Xóa vải vóc họa tiết quần áo nhân vật", function()
+    if LocalPlayer.Character then
+        for _, v in ipairs(LocalPlayer.Character:GetChildren()) do
+            if v:IsA("Shirt") or v:IsA("Pants") or v:IsA("Graphic") then v:Destroy() end
+        end
+        notify("Tối ưu", "Đcontrol xóa bỏ trang phục đồ họa nhân vật.", 2)
+    end
+end)
+
+-- 14. Dọn dẹp tường vô hình (Remove Invisible Parts)
+addCommand({"removenp", "clearinvisible"}, "Xóa bỏ các khối Part tàng hình cản địa hình", function()
+    local count = 0
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Transparency == 1 and part.CanCollide and not part:IsDescendantOf(LocalPlayer.Character) then
+            part.CanCollide = false
+            count = count + 1
+        end
+    end
+    notify("Dọn bản đồ", "Đcontrol xuyên thấu qua " .. count .. " khối tường vô hình.", 3)
+end)
+
+-- 15. Tắt hoạt ảnh di chuyển (No Animations)
+addCommand({"noanims", "stopanimations"}, "Bật/Tắt toàn bộ hoạt ảnh di chuyển (Đi, chạy, nhảy)", function()
+    local animScript = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Animate")
+    if animScript then
+        animScript.Disabled = not animScript.Disabled
+        if animScript.Disabled then
+            notify("Hoạt ảnh", "Đcontrol KHÓA đứng hoạt ảnh chuyển động", 3)
+        else
+            notify("Hoạt ảnh", "Khôi phục nhịp chuyển động mượt mà", 2)
+        end
+    end
+end)
+
+-- 16. Đầu khối vuông Minecraft (Block Head)
+addCommand({"blockhead"}, "Biến đổi đầu nhân vật thành một khối vuông", function()
+    local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+    if head then
+        local mesh = head:FindFirstChildOfClass("SpecialMesh")
+        if mesh then
+            mesh:Destroy()
+            notify("Tạo hình", "Đcontrol đổi đầu thành khối vuông.", 3)
+        end
+    end
+end)
+
+-- 17. Tàng hình Client Core (Mesh Delete Invis)
+addCommand({"invisible2", "clientinvis"}, "Bật/Tắt tàng hình hiển thị cục bộ (Xóa mesh cơ thể)", function()
+    if LocalPlayer.Character then
+        for _, item in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if item:IsA("BasePart") and item.Name ~= "HumanoidRootPart" then
+                item.Transparency = item.Transparency == 1 and 0 or 1
+            elseif item:IsA("Decal") then
+                item.Transparency = item.Transparency == 1 and 0 or 1
+            end
+        end
+        notify("Tàng hình", "Đcontrol thay đổi trạng thái hiển thị vật lý.", 3)
+    end
+end)
+
+-- 18. Thu gom dụng cụ rơi tự do (Bring Tools)
+addCommand({"bringtools", "gettools"}, "Thu gom quét toàn bộ vũ khí/dụng cụ nằm trên đất vào Balo", function()
+    local grabbed = 0
+    for _, item in ipairs(workspace:GetChildren()) do
+        if item:IsA("Tool") then
+            item.Parent = LocalPlayer.Backpack
+            grabbed = grabbed + 1
+        end
+    end
+    notify("Kho đồ", "Đcontrol nhặt thành công " .. grabbed .. " dụng cụ.", 3)
+end)
+
+-- 19. Thả rơi sạch balo (Drop Tools)
+addCommand({"droptools"}, "Thả toàn bộ vật phẩm trong Balo ra đất", function()
+    local bp = LocalPlayer.Backpack
+    if bp then
+        for _, t in ipairs(bp:GetChildren()) do
+            if t:IsA("Tool") then t.Parent = workspace end
+        end
+        notify("Kho đồ", "Đcontrol thả toàn bộ balo ra bản đồ.", 3)
+    end
+end)
+
+-- 20. Siêu bật nhảy cao (Super Jump Boost)
+local superJumpActive = false
+local sJumpConn = nil
+addCommand({"superjump"}, "Bật/Tắt chế độ siêu nhảy gia tốc cực cao", function()
+    superJumpActive = not superJumpActive
+    if superJumpActive then
+        notify("Siêu nhảy", "Đcontrol BẬT | Nhấn nút nhảy để phóng cao lên trời", 3)
+        sJumpConn = UserInputService.JumpRequest:Connect(function()
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.Velocity = Vector3.new(hrp.Velocity.X, 150, hrp.Velocity.Z) end
+        end)
+    else
+        if sJumpConn then sJumpConn:Disconnect() sJumpConn = nil end
+        notify("Siêu nhảy", "Đcontrol TẮT | Trở về lực bật thông thường", 2)
+    end
+end)
+
+-- 21. Dịch chuyển tới người ngẫu nhiên (Random TP)
+addCommand({"teleportr", "tprandom"}, "Dịch chuyển tức thời tới vị trí một người chơi ngẫu nhiên", function()
+    local allPlayers = Players:GetPlayers()
+    if #allPlayers > 1 then
+        local chosen = allPlayers[math.random(1, #allPlayers)]
+        while chosen == LocalPlayer do
+            chosen = allPlayers[math.random(1, #allPlayers)]
+        end
+        local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local tHrp = chosen.Character and chosen.Character:FindFirstChild("HumanoidRootPart")
+        if myHrp and tHrp then
+            myHrp.CFrame = tHrp.CFrame
+            notify("Dịch chuyển", "Đcontrol bay tới tọa độ của: " .. chosen.DisplayName, 3)
+        end
+    else
+        notify("Lỗi", "Không có đủ người chơi khác trong phòng.", 3)
+    end
+end)
+
+-- 22. Rung lắc góc máy (Camera Shake)
+local shakeActive = false
+addCommand({"camshake", "shake"}, "Bật/Tắt hiệu ứng rung chấn dao động camera liên hồi", function()
+    shakeActive = not shakeActive
+    if shakeActive then
+        notify("Camera", "Kích hoạt hiệu ứng rung màn hình", 3)
+        task.spawn(function()
+            while shakeActive do
+                RunService.RenderStepped:Wait()
+                Camera.CFrame = Camera.CFrame * CFrame.new(math.random(-5, 5)/100, math.random(-5, 5)/100, math.random(-5, 5)/100)
+            end
+        end)
+    else
+        notify("Camera", "Đcontrol TẮT trạng thái rung máy lắc.", 2)
+    end
+end)
+
+-- 23. Xem thông số Server (Server Info)
+addCommand({"serverinfo", "sinfo"}, "Kiểm tra thông số đường truyền dữ liệu máy chủ hiện tại", function()
+    local ping = game:GetService("Stats").Network.ServerPing:GetValue()
+    local placeName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+    local count = #Players:GetPlayers()
+    local maxP = Players.MaxPlayers
+    if InfoText then
+        InfoText.Text = string.format("Bản đồ: %s | Ping: %.1fms | Số người: %d/%d", placeName, ping, count, maxP)
+    end
+    notify("Server Info", string.format("Ping: %.1fms | Người chơi: %d/%d", ping, count, maxP), 4)
+end)
+
+-- 24. Truy vết người chơi (Player Info)
+addCommand({"playerinfo", "pinfo"}, "Kiểm tra chi tiết ID và tuổi đời tài khoản người chơi khác", function(args)
+    local targets = getTargetPlayer(args[1])
+    if targets and targets[1] then
+        local t = targets[1]
+        if InfoText then
+            InfoText.Text = string.format("Tên: %s | ID: %d | Tuổi acc: %d ngày", t.Name, t.UserId, t.AccountAge)
+        end
+        notify("Player Info", string.format("Acc: %s | Tuổi: %d ngày", t.DisplayName, t.AccountAge), 4)
+    else
+        notify("Lỗi", "Không tìm thấy đối tượng.", 3)
+    end
+end)
+
+-- 25. Dọn dẹp hiệu ứng bụi khói (Clear map effects)
+addCommand({"cleareffects", "noeffects"}, "Xóa toàn bộ hiệu ứng khói bụi khẩn cấp trên bản đồ", function()
+    local c = 0
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Explosion") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+            v:Destroy()
+            c = c + 1
+        end
+    end
+    notify("Hệ thống", "Đcontrol dọn sạch " .. c .. " hạt hiệu ứng.", 3)
+end)
+
+-- 26. Khóa/Mở khóa góc quay camera (Lock Camera Toggle)
+addCommand({"lockcam", "freezeview"}, "Bật/Tắt khóa cứng góc xoay trục tọa độ ống kính máy quay", function()
+    if Camera.CameraType == Enum.CameraType.Custom then
+        Camera.CameraType = Enum.CameraType.Scriptable
+        notify("Camera Lock", "Đcontrol KHÓA cứng góc xoay camera.", 3)
+    else
+        Camera.CameraType = Enum.CameraType.Custom
+        notify("Camera Lock", "Đcontrol MỞ KHÓA góc xoay camera.", 2)
+    end
+end)
+
+-- 28. Tải Dex Explorer (Trình quản lý bộ nhớ)
+addCommand({"dex", "explorer"}, "Khởi chạy công cụ quản lý bộ nhớ hệ thống Dex Explorer", function()
+    notify("Hệ thống", "Đang tải Dark Dex...", 2)
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
+    end)
+end)
+
+-- 29. Tự sát (Reset Character)
+addCommand({"re", "reset"}, "Tự sát nhân vật để hồi sinh ngay lập tức", function()
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then 
+        hum.Health = 0 
+        notify("Hệ thống", "Đang hồi sinh...", 2)
+    end
+end)
+
+-- 30. Khóa tốc độ chạy cố định (Speed Lock)
+local loopSpeedConn = nil
+addCommand({"loopspeed", "lspeed"}, "Bật/Tắt khóa cứng tốc độ di chuyển cố định không bị game reset", function(args)
+    if loopSpeedConn then
+        loopSpeedConn:Disconnect()
+        loopSpeedConn = nil
+        notify("Speed Lock", "Đcontrol TẮT tính năng khóa tốc độ", 2)
+    else
+        local targetSpeed = tonumber(args[1]) or 100
+        notify("Speed Lock", "Đcontrol BẬT khóa tốc độ chạy: " .. targetSpeed, 3)
+        loopSpeedConn = RunService.Heartbeat:Connect(function()
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = targetSpeed end
+        end)
+    end
+end)
+
+-- Buộc UI cập nhật lại danh sách nếu cần thiết
+if updateCommandList then updateCommandList() end
+
+-- =======================================================
+-- THÊM 30 LỆNH MỚI VÀO DANH SÁCH HIỂN THỊ
+-- =======================================================
 task.wait(0.5)
 pcall(function()
+    local newCommands = {
+        {"espbox", "box"},
+        {"esptracer", "tracers"},
+        {"spectate", "view"},
+        {"ctrltp", "clicktp"},
+        {"fullbright", "fb"},
+        {"infyield", "iy"},
+        {"autoleave", "antiadmin"},
+        {"headsize", "bighead"},
+        {"sit"},
+        {"freeze", "anchor"},
+        {"swim"},
+        {"antihat", "removehats"},
+        {"antishirt", "removeclothing"},
+        {"removenp", "clearinvisible"},
+        {"noanims", "stopanimations"},
+        {"blockhead"},
+        {"invisible2", "clientinvis"},
+        {"bringtools", "gettools"},
+        {"droptools"},
+        {"superjump"},
+        {"teleportr", "tprandom"},
+        {"camshake", "shake"},
+        {"serverinfo", "sinfo"},
+        {"playerinfo", "pinfo"},
+        {"cleareffects", "noeffects"},
+        {"lockcam", "freezeview"},
+        {"dex", "explorer"},
+        {"re", "reset"},
+        {"loopspeed", "lspeed"}
+    }
+    
+    local descMap = {
+        espbox = "Bật/Tắt khung viền hộp 2D bao quanh người chơi",
+        esptracer = "Bật/Tắt đường kẻ chỉ hướng tới người chơi",
+        spectate = "Bật/Tắt theo dõi góc nhìn Camera của người chơi khác",
+        ctrltp = "Bật/Tắt tính năng nhấn Giữ Ctrl + Click chuột trái để dịch chuyển",
+        fullbright = "Bật/Tắt ánh sáng Fullbright loại bỏ mọi vùng tối trên bản đồ",
+        infyield = "Khởi chạy nhanh Script đa năng Infinite Yield",
+        autoleave = "Bật/Tắt tự động thoát Server khi phát hiện Admin vào game",
+        headsize = "Phóng to kích cỡ đầu nhân vật (Gõ lại để reset)",
+        sit = "Ép trạng thái nhân vật ngồi xuống / đứng lên",
+        freeze = "Bật/Tắt khóa cứng đóng băng cố định tọa độ nhân vật",
+        swim = "Bật/Tắt giả lập môi trường bơi tự do trên không trung",
+        antihat = "Xóa toàn bộ phụ kiện mũ và tóc trên người để giảm độ trễ",
+        antishirt = "Xóa vải vóc họa tiết quần áo nhân vật",
+        removenp = "Xóa bỏ các khối Part tàng hình cản địa hình",
+        noanims = "Bật/Tắt toàn bộ hoạt ảnh di chuyển (Đi, chạy, nhảy)",
+        blockhead = "Biến đổi đầu nhân vật thành một khối vuông",
+        invisible2 = "Bật/Tắt tàng hình hiển thị cục bộ (Xóa mesh cơ thể)",
+        bringtools = "Thu gom quét toàn bộ vũ khí/dụng cụ nằm trên đất vào Balo",
+        droptools = "Thả toàn bộ vật phẩm trong Balo ra đất",
+        superjump = "Bật/Tắt chế độ siêu nhảy gia tốc cực cao",
+        teleportr = "Dịch chuyển tức thời tới vị trí một người chơi ngẫu nhiên",
+        camshake = "Bật/Tắt hiệu ứng rung chấn dao động camera liên hồi",
+        serverinfo = "Kiểm tra thông số đường truyền dữ liệu máy chủ hiện tại",
+        playerinfo = "Kiểm tra chi tiết ID và tuổi đời tài khoản người chơi khác",
+        cleareffects = "Xóa toàn bộ hiệu ứng khói bụi khẩn cấp trên bản đồ",
+        lockcam = "Bật/Tắt khóa cứng góc xoay trục tọa độ ống kính máy quay",
+        
+        dex = "Khởi chạy công cụ quản lý bộ nhớ hệ thống Dex Explorer",
+        re = "Tự sát nhân vật để hồi sinh ngay lập tức",
+        loopspeed = "Bật/Tắt khóa cứng tốc độ di chuyển cố định không bị game reset"
+    }
+    
     if ScrollContainer then
-        -- Tạo frame mới cho danh sách lệnh
-        local function addWhiteCommand(names, desc)
+        for _, cmdGroup in ipairs(newCommands) do
+            local first = cmdGroup[1]
+            local names = cmdGroup
+            local desc = descMap[first] or "Chức năng mới"
+            
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(1, -6, 0, 0)
             Frame.AutomaticSize = Enum.AutomaticSize.Y
@@ -3180,34 +3713,32 @@ pcall(function()
             Frame.ZIndex = 2
             
             local CmdText = Instance.new("TextLabel")
-            CmdText.Size = UDim2.new(0.35, 0, 1, 0)
+            CmdText.Size = UDim2.new(0.35, 0, 0, 0)
+            CmdText.AutomaticSize = Enum.AutomaticSize.Y
             CmdText.BackgroundTransparency = 1
             CmdText.Text = table.concat(names, ", ")
             CmdText.Font = Enum.Font.Code
-            CmdText.TextSize = 11
-            CmdText.TextColor3 = Color3.fromRGB(255, 255, 255) -- MÀU TRẮNG
+            CmdText.TextSize = 9.5
+            CmdText.TextColor3 = getgenv().ThemeColor
             CmdText.TextXAlignment = Enum.TextXAlignment.Left
             CmdText.TextWrapped = true
             CmdText.Parent = Frame
             CmdText.ZIndex = 3
             
             local DescText = Instance.new("TextLabel")
-            DescText.Size = UDim2.new(0.65, -8, 0, 0)
-            DescText.Position = UDim2.new(0.35, 6, 0, 0)
+            DescText.Size = UDim2.new(0.65, -6, 0, 0)
+            DescText.Position = UDim2.new(0.35, 4, 0, 0)
             DescText.AutomaticSize = Enum.AutomaticSize.Y
             DescText.BackgroundTransparency = 1
             DescText.Text = "- " .. desc
             DescText.Font = Enum.Font.Gotham
-            DescText.TextSize = 9
-            DescText.TextColor3 = Color3.fromRGB(200, 200, 200) -- MÀU TRẮNG NGÀ
+            DescText.TextSize = 8
+            DescText.TextColor3 = getgenv().ThemeColor
             DescText.TextXAlignment = Enum.TextXAlignment.Left
             DescText.TextWrapped = true
             DescText.Parent = Frame
             DescText.ZIndex = 3
         end
-        
-        addWhiteCommand({"emote", "e"}, "Emote System by 7yd7 (Bật/Tắt)")
-        addWhiteCommand({"stopemote"}, "Tắt Emote System khẩn cấp")
     end
 end)
 

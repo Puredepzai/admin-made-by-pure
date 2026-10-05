@@ -11590,7 +11590,7 @@ Window = WindUI:CreateWindow({
     Theme = "Dark",
     Icon = "rbxassetid://96858797315175",
     IconSize = 38,
-    Size = size,
+    Size = UDim2.fromOffset(820, 620),
     HideSearchBar = false,
     OpenButton = {
         Title = rng_s.lezzzgoo,
@@ -11604,7 +11604,7 @@ Window = WindUI:CreateWindow({
         StrokeThickness = 0.1,
     },
     Topbar = {
-        Height = 44,
+        Height = 48,
         ButtonsType = "Default"
     }
 })
@@ -13026,177 +13026,8 @@ local makeeverysingletabs = function()
         })
     end
     
-    -- Client Tab
-    local ClientTab = Window:Tab({
-        Title = "Client",
-        Desc = rng3("Client"),
-        Icon = "user",
-        IconColor = config.Gradow.uicolor.lightGray
-    }) do
-        ClientTab:Toggle({
-            Title = "ClientMods ('N')",
-            Desc = "Enable/disable all client modifications",
-            Value = config.clientModEnabled or false,
-            Callback = function(v)
-                config.clientModEnabled = v
-                if v then cmods() else resetcmods() end
-            end
-        })
-        ClientTab:Toggle({
-            Title = "Noclip",
-            Desc = "ghost and uhh backrooms",
-            Value = config.noclipEnabled or false,
-            Callback = function(v)
-                config.noclipEnabled = v
-                if config.clientModEnabled then cmods() end
-            end
-        })
-        ClientTab:Toggle({
-            Title = "Flight",
-            Desc = "creative mode",
-            Value = config.flightEnabled or false,
-            Callback = function(v)
-                config.flightEnabled = v
-                if config.clientModEnabled then cmods() else resetcmods() end
-            end
-        })
-        ClientTab:Slider({
-            Title = "Flight Speed",
-            Desc = "how fast u zoom",
-            IsTextbox = true,
-            Step = 1,
-            Value = {Min = 5, Max = 500, Default = config.flightSpeed or 50},
-            Callback = function(value) config.flightSpeed = value end
-        })
-        ClientTab:Toggle({
-            Title = "Enable Walkspeed",
-            Desc = "flash",
-            Value = config.walkspeedEnabled or false,
-            Callback = function(v)
-                config.walkspeedEnabled = v
-                if config.clientModEnabled then cmods() end
-            end
-        })
-        ClientTab:Slider({
-            Title = "Walkspeed",
-            Desc = "flash's speed",
-            IsTextbox = true,
-            Step = 1,
-            Value = {Min = 1, Max = 500, Default = config.walkspeedValue or 16},
-            Callback = function(value)
-                config.walkspeedValue = value
-                if config.clientModEnabled and config.walkspeedEnabled then cmods() end
-            end
-        })
-        ClientTab:Toggle({
-            Title = "Enable CFrame Speed",
-            Desc = "CFrame based speed (safer)",
-            Value = config.Speed or false,
-            Callback = function(v) config.Speed = v end
-        })
-        ClientTab:Slider({
-            Title = "CFrame Speed Multiplier",
-            Desc = "how fast",
-            IsTextbox = true,
-            Step = 0.5,
-            Value = {Min = 1, Max = 10, Default = config.SpeedMultiplier or 2},
-            Callback = function(value) config.SpeedMultiplier = value end
-        })
-        ClientTab:Toggle({
-            Title = "Enable Infinite Jump",
-            Desc = "fly like a jetpack xd",
-            Value = config.infjumpEnabled or false,
-            Callback = function(v)
-                config.infjumpEnabled = v
-                if config.clientModEnabled then cmods() end
-            end
-        })
-        ClientTab:Toggle({
-            Title = "Enable Jumppower",
-            Desc = "rabbit",
-            Value = config.jumppowerEnabled or false,
-            Callback = function(v)
-                config.jumppowerEnabled = v
-                if config.clientModEnabled then cmods() end
-            end
-        })
-        ClientTab:Slider({
-            Title = "Jumppower",
-            Desc = "rabbit power",
-            IsTextbox = true,
-            Step = 1,
-            Value = {Min = 10, Max = 500, Default = config.jumppowerValue or 50},
-            Callback = function(value)
-                config.jumppowerValue = value
-                if config.clientModEnabled and config.jumppowerEnabled then cmods() end
-            end
-        })
-        ClientTab:Toggle({
-            Title = "Enable Gravity",
-            Desc = "gravitons r real",
-            Value = config.gravityEnabled or false,
-            Callback = function(v)
-                config.gravityEnabled = v
-                if config.clientModEnabled then cmods() end
-            end
-        })
-        ClientTab:Slider({
-            Title = "Gravity Value",
-            Desc = "gravy valve",
-            IsTextbox = true,
-            Step = 1,
-            Value = {Min = -500, Max = 500, Default = config.gravityValue or 196.2},
-            Callback = function(value)
-                config.gravityValue = value
-                if config.clientModEnabled and config.gravityEnabled then cmods() end
-            end
-        })
-        ClientTab:Toggle({
-            Title = "Enable HipHeight",
-            Desc = "u float above the ground",
-            Value = config.hipHeightEnabled or false,
-            Callback = function(v)
-                config.hipHeightEnabled = v
-                if config.clientModEnabled then cmods() end
-            end
-        })
-        ClientTab:Slider({
-            Title = "HipHeight",
-            Desc = "how tall r u",
-            IsTextbox = true,
-            Step = 0.5,
-            Value = {Min = -10, Max = 50, Default = config.hipHeightValue or 0},
-            Callback = function(value)
-                config.hipHeightValue = value
-                if config.clientModEnabled and config.hipHeightEnabled then cmods() end
-            end
-        })
-        ClientTab:Space()
-        ClientTab:Toggle({
-            Title = "Anti-Fling",
-            Desc = "stop fling attempts",
-            Value = config.AntiFling or false,
-            Callback = function(v) config.AntiFling = v end
-        })
-        ClientTab:Toggle({
-            Title = "Truss",
-            Desc = "ladder fly",
-            Value = config.trussEnabled or false,
-            Callback = function(v) config.trussEnabled = v end
-        })
-        ClientTab:Toggle({
-            Title = "Airwalk",
-            Desc = "walk on air so u fly",
-            Value = config.airwalkEnabled or false,
-            Callback = function(v) config.airwalkEnabled = v end
-        })
-        ClientTab:Toggle({
-            Title = "Auto Respawn",
-            Desc = "respawn at death pos",
-            Value = config.autorespawnEnabled or false,
-            Callback = function(v) config.autorespawnEnabled = v end
-        })
-    end
+    -- Movement/Client controls are consolidated into the Movement tab below.
+    -- The duplicate Client tab was removed to avoid duplicate Fly/Flight controls.
     
     -- World Tab
     local WorldTab = Window:Tab({
@@ -13286,8 +13117,8 @@ local makeeverysingletabs = function()
     
     -- Misc Tab
     local MiscTab = Window:Tab({
-        Title = "Miscellaneous",
-        Desc = rng3("Miscellaneous"),
+        Title = "Combat",
+        Desc = rng3("Combat"),
         Icon = "settings",
         IconColor = config.Gradow.uicolor.lightGray
     }) do
@@ -13445,8 +13276,8 @@ local makeeverysingletabs = function()
     
     -- Extra Features Tab (NEW)
     local ExtraTab = Window:Tab({
-        Title = "Extra Features",
-        Desc = "Additional Pure Hub features",
+        Title = "Player",
+        Desc = "Player utilities, overlays and notifications",
         Icon = "star",
         IconColor = config.Gradow.uicolor.lightGreen
     }) do
@@ -13486,72 +13317,8 @@ local makeeverysingletabs = function()
             end
         })
         ExtraTab:Space()
-        ExtraTab:Paragraph({
-            Title = "Server Utilities",
-            Desc = "Server management tools",
-            Color = config.Gradow.uicolor.lightGreen
-        })
-        ExtraTab:Button({
-            Title = "Rejoin Server",
-            Desc = "rejoin this server",
-            Icon = "refresh-cw",
-            Callback = function()
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
-            end
-        })
-        ExtraTab:Button({
-            Title = "Server Hop",
-            Desc = "hop to new server",
-            Icon = "shuffle",
-            Callback = function()
-                pcall(function()
-                    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-                    if servers and servers.data then
-                        for _, srv in ipairs(servers.data) do
-                            if srv.playing < srv.maxPlayers and srv.id ~= game.JobId then
-                                TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LocalPlayer)
-                                return
-                            end
-                        end
-                    end
-                end)
-            end
-        })
+        -- Server management lives exclusively in the Server tab.
         ExtraTab:Space()
-        ExtraTab:Paragraph({
-            Title = "Player Utilities",
-            Desc = "Player management",
-            Color = config.Gradow.uicolor.lightGreen
-        })
-        ExtraTab:Input({
-            Title = "Player Name",
-            Desc = "enter username to teleport",
-            Placeholder = "username",
-            Value = "",
-            ClearTextOnFocus = true,
-            Callback = function(text) playerTPInput = text end
-        })
-        ExtraTab:Button({
-            Title = "Teleport To Player",
-            Desc = "teleport to player by name",
-            Icon = "navigation",
-            Callback = function()
-                local name = playerTPInput or ""
-                if name == "" then return end
-                for _, pl in ipairs(Players:GetPlayers()) do
-                    if pl.Name:lower():find(name:lower()) or pl.DisplayName:lower():find(name:lower()) then
-                        if pl.Character and LocalPlayer.Character then
-                            local targetRoot = pl.Character:FindFirstChild("HumanoidRootPart")
-                            local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                            if targetRoot and myRoot then
-                                myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
-                            end
-                        end
-                        break
-                    end
-                end
-            end
-        })
         ExtraTab:Space()
         ExtraTab:Paragraph({
             Title = "Notifications",
@@ -13709,7 +13476,7 @@ local makeeverysingletabs = function()
     -- // NEW TAB 1: MOVEMENT+
     -- ==========================================
     local MoveTab = Window:Tab({
-        Title = "Movement+",
+        Title = "Movement",
         Desc = "fly, infinite jump & more",
         Icon = "wind",
         IconColor = config.Gradow.uicolor.lightGray
@@ -13768,7 +13535,6 @@ local makeeverysingletabs = function()
         end})
         MoveTab:Slider({Title = "Fly Speed", Desc = "studs/sec", Step = 5, Value = {Min = 10, Max = 300, Default = 60}, Callback = function(v) S.flySpeed = v end})
         MoveTab:Space()
-        MoveTab:Toggle({Title = "Infinite Jump", Desc = "jump in mid-air", Value = false, Callback = function(v) S.infJump = v end})
         UserInputService.JumpRequest:Connect(function()
             if S.infJump then
                 local _, hum = hrp()
@@ -13807,6 +13573,30 @@ local makeeverysingletabs = function()
                 end)
             end
         end})
+        MoveTab:Space()
+        MoveTab:Paragraph({Title = "Client Movement", Desc = "single source for movement modifiers", Color = config.Gradow.uicolor.lightGreen})
+        MoveTab:Toggle({Title = "Noclip", Desc = "disable character collisions", Value = config.noclipEnabled or false, Callback = function(v)
+            config.noclipEnabled = v
+            if config.clientModEnabled then cmods() end
+        end})
+        MoveTab:Toggle({Title = "Walkspeed", Desc = "custom humanoid walkspeed", Value = config.walkspeedEnabled or false, Callback = function(v)
+            config.walkspeedEnabled = v
+            config.clientModEnabled = true
+            cmods()
+        end})
+        MoveTab:Slider({Title = "Walkspeed Value", Desc = "movement speed", Step = 1, Value = {Min = 1, Max = 500, Default = config.walkspeedValue or 16}, Callback = function(v)
+            config.walkspeedValue = v
+            if config.clientModEnabled and config.walkspeedEnabled then cmods() end
+        end})
+        MoveTab:Toggle({Title = "Infinite Jump", Desc = "jump while airborne", Value = S.infJump, Callback = function(v) S.infJump = v; config.infjumpEnabled = v end})
+        MoveTab:Toggle({Title = "Airwalk", Desc = "walk without falling", Value = config.airwalkEnabled or false, Callback = function(v) config.airwalkEnabled = v end})
+        MoveTab:Toggle({Title = "Anti-Void Protection", Desc = "recover before falling out of the map", Value = S.antiVoid, Callback = function(v) S.antiVoid = v end})
+        MoveTab:Toggle({Title = "Auto Respawn", Desc = "respawn after death", Value = config.autorespawnEnabled or false, Callback = function(v) config.autorespawnEnabled = v end})
+        MoveTab:Toggle({Title = "Gravity Override", Desc = "local gravity setting", Value = config.gravityEnabled or false, Callback = function(v) config.gravityEnabled = v; if config.clientModEnabled then cmods() end end})
+        MoveTab:Slider({Title = "Gravity Value", Desc = "gravity strength", Step = 1, Value = {Min = -500, Max = 500, Default = config.gravityValue or 196.2}, Callback = function(v) config.gravityValue = v; if config.clientModEnabled and config.gravityEnabled then cmods() end end})
+        MoveTab:Toggle({Title = "HipHeight", Desc = "local character height", Value = config.hipHeightEnabled or false, Callback = function(v) config.hipHeightEnabled = v; if config.clientModEnabled then cmods() end end})
+        MoveTab:Slider({Title = "HipHeight Value", Desc = "character offset", Step = 0.5, Value = {Min = -10, Max = 50, Default = config.hipHeightValue or 0}, Callback = function(v) config.hipHeightValue = v; if config.clientModEnabled and config.hipHeightEnabled then cmods() end end})
+        MoveTab:Toggle({Title = "Truss", Desc = "ladder-style movement helper", Value = config.trussEnabled or false, Callback = function(v) config.trussEnabled = v end})
         MoveTab:Button({Title = "Reset Character", Desc = "respawn", Icon = "refresh-cw", Callback = function()
             local _, hum = hrp()
             if hum then hum.Health = 0 end
@@ -13817,29 +13607,12 @@ local makeeverysingletabs = function()
     -- // NEW TAB 2: UTILITY
     -- ==========================================
     local UtilTab = Window:Tab({
-        Title = "Utility",
-        Desc = "server tools & performance",
+        Title = "Performance",
+        Desc = "Performance and camera tools",
         Icon = "wrench",
         IconColor = config.Gradow.uicolor.lightGray
     }) do
-        UtilTab:Paragraph({Title = "Server", Desc = "rejoin / hop / info", Color = config.Gradow.uicolor.lightGreen})
-        UtilTab:Button({Title = "Rejoin Server", Desc = "same server if possible", Icon = "refresh-cw", Callback = function()
-            pcall(function()
-                if #Players:GetPlayers() <= 1 then
-                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
-                else
-                    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
-                end
-            end)
-        end})
-        UtilTab:Button({Title = "New Server", Desc = "join a fresh server", Icon = "shuffle", Callback = function()
-            pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
-        end})
-        UtilTab:Button({Title = "Copy Server JobId", Desc = "to clipboard", Icon = "copy", Callback = function()
-            if type(setclipboard) == "function" then setclipboard(game.JobId) end
-            n({Title = "Pure.cc", Content = "JobId: " .. tostring(game.JobId), Length = 3, BarColor = Color3.fromRGB(0, 255, 150)})
-        end})
-        UtilTab:Space()
+        -- Server management lives exclusively in the Server tab.
         UtilTab:Paragraph({Title = "Performance", Desc = "lower lag", Color = config.Gradow.uicolor.lightGreen})
         local saved = {}
         UtilTab:Toggle({Title = "FPS Boost", Desc = "disable shadows, effects, smooth materials", Value = false, Callback = function(v)
@@ -13920,7 +13693,7 @@ local makeeverysingletabs = function()
             Callback = function(o) selected = o end
         })
         selected = names()[1]
-        TpTab:Button({Title = "Refresh List", Desc = "reload player list", Icon = "refresh-cw", Callback = function()
+        TpTab:Button({Title = "Refresh Spectate List", Desc = "reload spectate targets", Icon = "refresh-cw", Callback = function()
             pcall(function() dd:Refresh(names()) end)
         end})
         TpTab:Button({Title = "Teleport To Player", Desc = "go to selected", Icon = "navigation", Callback = function()
@@ -14066,19 +13839,6 @@ local makeeverysingletabs = function()
         end})
         PlusTab:Space()
         PlusTab:Paragraph({Title = "Utility", Desc = "quality of life", Color = config.Gradow.uicolor.lightGreen})
-        local afkConn
-        PlusTab:Toggle({Title = "Anti AFK", Desc = "do not get kicked for idling", Value = false, Callback = function(v)
-            if afkConn then afkConn:Disconnect() afkConn = nil end
-            if v then
-                afkConn = LocalPlayer.Idled:Connect(function()
-                    pcall(function()
-                        local vu = game:GetService("VirtualUser")
-                        vu:CaptureController()
-                        vu:ClickButton2(Vector2.new())
-                    end)
-                end)
-            end
-        end})
         PlusTab:Toggle({Title = "Sit", Desc = "sit down", Value = false, Callback = function(v)
             local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
             if h then h.Sit = v end
@@ -14098,7 +13858,7 @@ local makeeverysingletabs = function()
     -- // NEW TAB 6: NPCS
     -- ==========================================
     local NpcTab = Window:Tab({
-        Title = "NPCs",
+        Title = "NPC",
         Desc = "esp + aim on bots and mobs",
         Icon = "bot",
         IconColor = config.Gradow.uicolor.lightGray
@@ -14137,76 +13897,13 @@ local makeeverysingletabs = function()
         end)
     end
 
-    -- ==========================================
-    -- // NEW TAB 7: JOKES
-    -- ==========================================
-    local JokeTab = Window:Tab({
-        Title = "Jokes",
-        Desc = "dirty mouth, clean script",
-        Icon = "smile",
-        IconColor = config.Gradow.uicolor.lightGray
-    }) do
-        local jokes = {
-            "Why did the aimbot go to therapy? It kept missing its emotional target.",
-            "My lag is like my ex: shows up at the worst moment and ruins everything.",
-            "Bro's hitbox is so big it needs its own zip code.",
-            "Hat dau vao tim, bat dau vao trim. Aim chuan day boss.",
-            "I asked my script for a quickie. It loaded in 4.5 seconds. Thanks, Pure.",
-            "Ping 999 is just the universe saying go touch grass, bitch.",
-            "Why do NPCs never win? They keep dying to my balls... of fire.",
-            "Yo mama so slow, she lags in single player.",
-            "May cam nhu aimbot nhung tim em van miss.",
-            "Fuck it, we ball. Fuck it, we headshot.",
-            "I'm not saying my aim is bad, but even the wall flinches.",
-            "Dit me, ping gi ma cao the, nhu gia xang vay.",
-            "Esp so clear I can see your trust issues through the wall.",
-            "Killing NPCs is just anger management with extra steps.",
-            "My KD ratio is like my sex life: purely theoretical.",
-            "Roses are red, my screen is blue, the bot has no brain, and neither do you.",
-            "Cai script nay muot hon da em gai, nhung doi lag la khoc.",
-            "Dang yeu hon ca ban gai cu: script khong bao gio doi bo minh.",
-            "They said touch grass. I touched gravel. Now I'm pure.",
-            "Why was the loader so horny? Because it kept hitting 100%.",
-            "Die tu nhien nhu NPC, chet khong ai thuong.",
-            "Hitbox expander: because size does matter, apparently.",
-            "Tao chua thay thang nao dung aimbot ma van thua, tru may.",
-            "Damn, that headshot was cleaner than your browser history.",
-        }
-        local last = "press the button"
-        local jp = JokeTab:Paragraph({Title = "Joke", Desc = last, Color = config.Gradow.uicolor.Black})
-        local function pick()
-            local j = jokes[math.random(1, #jokes)]
-            last = j
-            pcall(function() jp:SetDesc(j) end)
-            return j
-        end
-        JokeTab:Button({Title = "Tell Me A Joke", Desc = "random dirty joke", Icon = "message-circle", Callback = function() pick() end})
-        JokeTab:Button({Title = "Copy Joke", Desc = "to clipboard", Icon = "copy", Callback = function()
-            if type(setclipboard) == "function" then setclipboard(last) end
-        end})
-        JokeTab:Button({Title = "Joke Notification", Desc = "pop one on screen", Icon = "bell", Callback = function()
-            n({Title = "Pure.cc", Content = pick(), Length = 5, BarColor = Color3.fromRGB(0, 150, 60)})
-        end})
-        JokeTab:Space()
-        local auto = false
-        JokeTab:Toggle({Title = "Auto Jokes", Desc = "new joke every 20 seconds", Value = false, Callback = function(v)
-            auto = v
-            if v then
-                task.spawn(function()
-                    while auto and getgenv().PureHub_Loaded do
-                        n({Title = "Pure.cc", Content = pick(), Length = 5, BarColor = Color3.fromRGB(0, 150, 60)})
-                        task.wait(20)
-                    end
-                end)
-            end
-        end})
-    end
+    -- Jokes tab removed in v6: replaced by useful Diagnostics/Settings tabs.
 
     -- ==========================================
     -- // NEW TAB 8: CHARACTER+
     -- ==========================================
     local CharTab = Window:Tab({
-        Title = "Character+",
+        Title = "Character",
         Desc = "sprint, bhop, camera",
         Icon = "user",
         IconColor = config.Gradow.uicolor.lightGray
@@ -14333,6 +14030,60 @@ local makeeverysingletabs = function()
                 pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, jid, LocalPlayer) end)
             end
         end})
+
+
+        SrvTab:Space()
+        SrvTab:Paragraph({
+            Title = "Server Actions",
+            Desc = "All server-management functions are kept here.",
+            Color = config.Gradow.uicolor.lightGreen
+        })
+        SrvTab:Button({
+            Title = "Rejoin Server",
+            Desc = "rejoin the current server",
+            Icon = "refresh-cw",
+            Callback = function()
+                task.spawn(function()
+                    local ok, err = pcall(function()
+                        if #Players:GetPlayers() <= 1 then
+                            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                        else
+                            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+                        end
+                    end)
+                    if not ok then
+                        n({Title = "Pure.cc", Content = "Rejoin failed: " .. tostring(err), Length = 3, BarColor = Color3.fromRGB(255, 80, 80)})
+                    end
+                end)
+            end
+        })
+        SrvTab:Button({
+            Title = "New Server",
+            Desc = "join a fresh server",
+            Icon = "shuffle",
+            Callback = function()
+                task.spawn(function()
+                    local ok, err = pcall(function()
+                        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                    end)
+                    if not ok then
+                        n({Title = "Pure.cc", Content = "Teleport failed: " .. tostring(err), Length = 3, BarColor = Color3.fromRGB(255, 80, 80)})
+                    end
+                end)
+            end
+        })
+        SrvTab:Button({
+            Title = "Copy Server JobId",
+            Desc = "copy the current server id",
+            Icon = "copy",
+            Callback = function()
+                local id = tostring(game.JobId)
+                if type(setclipboard) == "function" then
+                    pcall(setclipboard, id)
+                end
+                n({Title = "Pure.cc", Content = "JobId: " .. id, Length = 3, BarColor = Color3.fromRGB(0, 255, 150)})
+            end
+        })
     end
 
     -- Dev Tab
@@ -14508,6 +14259,60 @@ local makeeverysingletabs = function()
         end)
     end
     
+    -- Protection Tab
+    local ProtectionTab = Window:Tab({
+        Title = "Protection",
+        Desc = "defensive client recovery tools",
+        Icon = "shield",
+        IconColor = config.Gradow.uicolor.lightGreen
+    }) do
+        ProtectionTab:Paragraph({Title = "Defensive Tools", Desc = "Protection and recovery; no anti-cheat bypassing.", Color = config.Gradow.uicolor.lightGreen})
+        ProtectionTab:Toggle({Title = "Anti-Fling", Desc = "reduce unwanted character physics", Value = config.AntiFling or false, Callback = function(v) config.AntiFling = v end})
+        ProtectionTab:Button({Title = "Reset Character Physics", Desc = "clear local velocity and platform state", Icon = "shield-check", Callback = function()
+            local c = LocalPlayer.Character
+            local root = c and c:FindFirstChild("HumanoidRootPart")
+            local hum = c and c:FindFirstChildOfClass("Humanoid")
+            if root then root.AssemblyLinearVelocity = Vector3.zero; root.AssemblyAngularVelocity = Vector3.zero end
+            if hum then hum.PlatformStand = false; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+        end})
+        ProtectionTab:Button({Title = "Restore Camera", Desc = "return camera to the local humanoid", Icon = "camera", Callback = function()
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum and workspace.CurrentCamera then
+                workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+                workspace.CurrentCamera.CameraSubject = hum
+            end
+        end})
+        ProtectionTab:Button({Title = "Restore Lighting", Desc = "remove temporary local lighting overrides", Icon = "sun", Callback = function()
+            pcall(function()
+                game:GetService("Lighting").GlobalShadows = true
+                for _, o in ipairs(game:GetService("Lighting"):GetChildren()) do
+                    if o:IsA("PostEffect") and o.Name ~= "PureLoaderBlur" and o.Name ~= "GlobalUIBlur" then o.Enabled = true end
+                end
+            end)
+        end})
+    end
+
+    -- Session Tab
+    local SessionTab = Window:Tab({
+        Title = "Session",
+        Desc = "copy useful session identifiers",
+        Icon = "clipboard",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        SessionTab:Paragraph({Title = "Session Information", Desc = "Copy identifiers without mixing them into Server management.", Color = config.Gradow.uicolor.lightGreen})
+        local function copyValue(label, value)
+            if type(setclipboard) == "function" then
+                pcall(setclipboard, tostring(value))
+                n({Title = "Pure.cc", Content = label .. " copied", Length = 2})
+            else
+                n({Title = "Pure.cc", Content = "Clipboard API unavailable", Length = 2, BarColor = Color3.fromRGB(255, 180, 0)})
+            end
+        end
+        SessionTab:Button({Title = "Copy PlaceId", Desc = "copy current experience id", Icon = "copy", Callback = function() copyValue("PlaceId", game.PlaceId) end})
+        SessionTab:Button({Title = "Copy Player UserId", Desc = "copy your Roblox UserId", Icon = "copy", Callback = function() copyValue("UserId", LocalPlayer.UserId) end})
+        SessionTab:Button({Title = "Copy Experience Link", Desc = "copy a Roblox experience URL", Icon = "link", Callback = function() copyValue("Experience link", "https://www.roblox.com/games/" .. tostring(game.PlaceId)) end})
+    end
+
     -- Info Tab
     local InfoTab = Window:Tab({
         Title = "Information",
@@ -14527,7 +14332,7 @@ local makeeverysingletabs = function()
         })
         InfoTab:Paragraph({
             Title = "Features",
-            Desc = "• Aimbot with smoothness control\n• SilentAim HB & HK\n• ESP (Text/Box/Health/Highlight/HeadDot/Tracer)\n• LOS (Line of Sight)\n• Hitbox expansion + visualizer\n• AntiAim (Raycast/Above/Behind/Orbit)\n• TriggerBot\n• AutoFarm\n• Reach\n• ClientMods (Speed/Fly/Noclip/Jump/etc)\n• Anti-Fling\n• CFrame Speed\n• Watermark + Crosshair\n• Save/Load system\n• Server Hop/Rejoin\n• Player Teleport\n• BGM Player\n• Dev Console",
+            Desc = "• Aimbot with smoothness control\n• SilentAim HB & HK\n• ESP (Text/Box/Health/Highlight/HeadDot/Tracer)\n• LOS (Line of Sight)\n• Hitbox expansion + visualizer\n• AntiAim (Raycast/Above/Behind/Orbit)\n• TriggerBot\n• AutoFarm\n• Reach\n• Consolidated Movement tools (Fly/Speed/Noclip/Jump/etc)\n• Defensive Anti-Fling\n• Performance and camera tools\n• Watermark + Crosshair\n• Save/Load system\n• Server Hop/Rejoin\n• Player Teleport\n• BGM Player\n• Dev Console",
             Color = config.Gradow.uicolor.darkGray
         })
         InfoTab:Paragraph({
@@ -14535,6 +14340,111 @@ local makeeverysingletabs = function()
             Desc = "This script is for educational purposes only.\nUse at your own risk. Original creator\nnot responsible for any actions taken\nagainst your Roblox account.",
             Color = config.Gradow.uicolor.Red
         })
+    end
+
+    -- ==========================================
+    -- // SETTINGS TAB
+    -- ==========================================
+    local SettingsTab = Window:Tab({
+        Title = "Settings",
+        Desc = "Pure Hub UI controls",
+        Icon = "settings",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        SettingsTab:Paragraph({
+            Title = "Interface",
+            Desc = "Simple controls for the Pure Hub window.",
+            Color = config.Gradow.uicolor.lightGreen
+        })
+        local transparent = false
+        SettingsTab:Toggle({
+            Title = "Window Transparency",
+            Desc = "toggle the WindUI transparency mode",
+            Value = false,
+            Callback = function(v)
+                transparent = v
+                pcall(function()
+                    WindUI.Window:ToggleTransparency(v)
+                end)
+            end
+        })
+        SettingsTab:Button({
+            Title = "Reopen Window",
+            Desc = "restore the main window if hidden",
+            Icon = "eye",
+            Callback = function()
+                pcall(function()
+                    if Window.Open then Window:Open() end
+                end)
+                pcall(function()
+                    if WindUI.Window.Open then WindUI.Window:Open() end
+                end)
+            end
+        })
+        SettingsTab:Button({
+            Title = "Close Pure Hub",
+            Desc = "cleanly destroy the current UI",
+            Icon = "x",
+            Callback = function()
+                pcall(function() Window:Destroy() end)
+            end
+        })
+    end
+
+    -- ==========================================
+    -- // DIAGNOSTICS TAB
+    -- ==========================================
+    local DiagnosticsTab = Window:Tab({
+        Title = "Diagnostics",
+        Desc = "runtime and compatibility information",
+        Icon = "activity",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        local diag = DiagnosticsTab:Paragraph({
+            Title = "Runtime Status",
+            Desc = "Loading...",
+            Color = config.Gradow.uicolor.Black
+        })
+        local function refreshDiagnostics()
+            local fps = 0
+            local ping = 0
+            pcall(function()
+                local dt = RunService.RenderStepped:Wait()
+                fps = math.floor(1 / math.max(dt, 1/240))
+            end)
+            pcall(function()
+                ping = math.round(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+            end)
+            local hookState = HAS_HOOKS and "available" or "unavailable"
+            local playerCount = #Players:GetPlayers()
+            pcall(function()
+                diag:SetDesc(
+                    "PlaceId: " .. tostring(game.PlaceId) ..
+                    "\nJobId: " .. tostring(game.JobId) ..
+                    "\nPlayers: " .. tostring(playerCount) .. "/" .. tostring(Players.MaxPlayers) ..
+                    "\nFPS: " .. tostring(fps) ..
+                    "\nPing: " .. tostring(ping) .. " ms" ..
+                    "\nHook APIs: " .. hookState
+                )
+            end)
+        end
+        DiagnosticsTab:Button({
+            Title = "Refresh Diagnostics",
+            Desc = "recheck runtime information",
+            Icon = "refresh-cw",
+            Callback = refreshDiagnostics
+        })
+        DiagnosticsTab:Button({
+            Title = "Copy JobId",
+            Desc = "copy current server id",
+            Icon = "copy",
+            Callback = function()
+                if type(setclipboard) == "function" then
+                    pcall(setclipboard, tostring(game.JobId))
+                end
+            end
+        })
+        refreshDiagnostics()
     end
 end
 

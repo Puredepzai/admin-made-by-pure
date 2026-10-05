@@ -1,3 +1,5 @@
+-- Pure.cc ALL-IN-ONE: Launcher (START) -> Loader -> Hub
+local PureHubMain = function(...)
 -- ==========================================
 -- PURE HUB - ALL IN ONE
 -- Based on Gravel.cc by Gpssickle (hm5650)
@@ -49,12 +51,100 @@ print([[
     All credits go to original author
 ]]
 
+
+-- ==========================================
+-- // DELTA COMPATIBILITY LAYER
+-- ==========================================
+-- Keep optional executor APIs from hard-crashing the whole script.
+local _GENV = (type(getgenv) == "function" and getgenv()) or _G
+if type(getgenv) ~= "function" then
+    getgenv = function() return _GENV end
+end
+
+local function _identity(v) return v end
+local _memoryFiles = {}
+
+if type(isfolder) ~= "function" then
+    isfolder = function() return false end
+end
+if type(makefolder) ~= "function" then
+    makefolder = function() return true end
+end
+if type(writefile) ~= "function" then
+    writefile = function(path, data)
+        _memoryFiles[path] = tostring(data)
+        return true
+    end
+end
+if type(readfile) ~= "function" then
+    readfile = function(path)
+        if _memoryFiles[path] ~= nil then
+            return _memoryFiles[path]
+        end
+        error("readfile is unavailable in this executor")
+    end
+end
+
+if type(cloneref) ~= "function" then
+    cloneref = _identity
+end
+
+-- Some Delta builds expose Drawing; older builds may not.
+-- A no-op fallback prevents ESP drawing code from killing the whole GUI.
+if type(Drawing) ~= "table" or type(Drawing.new) ~= "function" then
+    Drawing = {
+        new = function()
+            local obj = {Visible = false}
+            function obj:Remove() end
+            return obj
+        end
+    }
+end
+
+local HAS_HOOKS =
+    type(hookmetamethod) == "function" and
+    type(hookfunction) == "function" and
+    type(newcclosure) == "function" and
+    type(getnamecallmethod) == "function"
+
+local HAS_CHECKCALLER = type(checkcaller) == "function"
+
+if not HAS_HOOKS then
+    warn("[Pure] Delta compatibility: metamethod hooks are unavailable; hook-based features are disabled.")
+end
+
+-- Add your own music here: {name = "song", id = 1234567890}
+getgenv().PURE_EXTRA_MUSIC = getgenv().PURE_EXTRA_MUSIC or {
+}
+
 -- Pure Hub (or P.H)
 if getgenv().PureHub_Loaded then
     return
 end
 getgenv().PureHub_Loaded = true
 getgenv().nameeeitttttohhhhhhmahhhhhgahhhhhh_ = ""
+
+-- // BLUR SWEEPER: remove every blur/DoF that was NOT in the game before Pure started
+do
+    local L = game:GetService("Lighting")
+    if not getgenv().PureBlurSnapshot then
+        local snap = {}
+        for _, o in ipairs(L:GetChildren()) do
+            if o:IsA("BlurEffect") or o:IsA("DepthOfFieldEffect") then snap[o] = true end
+        end
+        getgenv().PureBlurSnapshot = snap
+    end
+    getgenv().PureKillBlur = function()
+        pcall(function()
+            local snap = getgenv().PureBlurSnapshot or {}
+            for _, o in ipairs(L:GetChildren()) do
+                if (o:IsA("BlurEffect") or o:IsA("DepthOfFieldEffect")) and not snap[o] then
+                    o:Destroy()
+                end
+            end
+        end)
+    end
+end
 
 -- excusemesir. dere was somebody u known b4
 local excusemesir = {
@@ -70,7 +160,7 @@ local excusemesir = {
     Lighting = game:GetService("Lighting"),
     ScriptContext = game:GetService("ScriptContext"),
     LogService = game:GetService("LogService"),
-    CoreGui = game:GetService("CoreGui"),
+    CoreGui = ((type(gethui) == "function" and gethui()) or game:GetService("CoreGui")),
     Teams = game:GetService("Teams"),
     StarterGui = game:GetService("StarterGui"),
     MarketplaceService = game:GetService("MarketplaceService"),
@@ -79,6 +169,46 @@ local excusemesir = {
     ServerStorage = game:GetService("ServerStorage"),
     TeleportService = game:GetService("TeleportService"),
 }
+
+-- Stable aliases used by older parts of the merged script.
+local Players = excusemesir.Players
+local LocalPlayer = excusemesir.Players.LocalPlayer
+local localPlayer = LocalPlayer
+local plr = LocalPlayer
+local Workspace = excusemesir.Workspace
+local ReplicatedStorage = excusemesir.ReplicatedStorage
+local RunService = excusemesir.RunService
+local UserInputService = excusemesir.UserInputService
+local TweenService = excusemesir.TweenService
+local HttpService = excusemesir.HttpService
+local TeleportService = excusemesir.TeleportService
+local CoreGui = excusemesir.CoreGui
+
+-- More executor-API fallbacks. Delta versions differ in which filesystem
+-- helpers are exposed; missing helpers should not crash the whole GUI.
+if type(isfile) ~= "function" then
+    isfile = function(path)
+        if _memoryFiles[path] ~= nil then return true end
+        if type(readfile) ~= "function" then return false end
+        local ok = pcall(readfile, path)
+        return ok
+    end
+end
+if type(delfile) ~= "function" then
+    delfile = function(path)
+        _memoryFiles[path] = nil
+        return true
+    end
+end
+if type(listfiles) ~= "function" then
+    listfiles = function()
+        local out = {}
+        for path in pairs(_memoryFiles) do
+            out[#out + 1] = path
+        end
+        return out
+    end
+end
 
 -- ==========================================
 -- // HTTP URLS (Pure Version - same endpoints)
@@ -282,8 +412,96 @@ local success_loader, err_loader = xpcall(function()
     UIObject6.TextYAlignment = Enum.TextYAlignment.Center
     UIObject6.Text = "[Check]: ..."
     UIObject6.Parent = UIObject1
+    -- Cover the baked-in "Gravel" logo (bottom-left of the loader) with a glitching PURE HUB title
+    do
+        local logoCover = Instance.new("Frame")
+        logoCover.Name = "PureLogoCover"
+        logoCover.BackgroundColor3 = Color3.new(0, 0, 0)
+        logoCover.BorderSizePixel = 0
+        logoCover.Position = UDim2.new(0, 0, 0, 172)
+        logoCover.Size = UDim2.new(0, 230, 0, 70)
+        logoCover.ZIndex = 5
+        logoCover.ClipsDescendants = false
+        logoCover.Parent = UIObject1
+        local function mkLayer(name, z)
+            local t = Instance.new("TextLabel")
+            t.Name = name
+            t.BackgroundTransparency = 1
+            t.Position = UDim2.new(0, 8, 0, 0)
+            t.Size = UDim2.new(1, -8, 1, 0)
+            t.Font = Enum.Font.Arcade
+            t.Text = "PURE HUB"
+            t.TextSize = 34
+            t.TextXAlignment = Enum.TextXAlignment.Left
+            t.ZIndex = z
+            t.Parent = logoCover
+            return t
+        end
+        local ghostR = mkLayer("PureGhostR", 6)
+        local ghostB = mkLayer("PureGhostB", 6)
+        local logoText = mkLayer("PureLogoText", 7)
+        ghostR.TextColor3 = Color3.fromRGB(255, 40, 80)
+        ghostB.TextColor3 = Color3.fromRGB(40, 200, 255)
+        ghostR.TextTransparency = 0.45
+        ghostB.TextTransparency = 0.45
+        local logoState = {green = false, red = false, shake = 0}
+        getgenv().PureLogoState = logoState
+        task.spawn(function()
+            local base = "PURE HUB"
+            local junk = {"#", "%", "@", "&", "$", "/", "\\", "0", "1", "?"}
+            while logoText.Parent do
+                local main = Color3.fromRGB(255, 255, 255)
+                local g1, g2 = Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 200, 200)
+                if logoState.green then
+                    main = Color3.fromRGB(0, 150, 60)
+                    g1, g2 = Color3.fromRGB(0, 100, 40), Color3.fromRGB(40, 190, 100)
+                elseif logoState.red then
+                    main = Color3.fromRGB(255, 60, 60)
+                    g1, g2 = Color3.fromRGB(180, 0, 0), Color3.fromRGB(255, 140, 140)
+                end
+                ghostR.TextColor3 = g1
+                ghostB.TextColor3 = g2
+                local glitch = math.random() < 0.28
+                local txt = base
+                if glitch then
+                    local k = math.random(1, #base)
+                    txt = base:sub(1, k - 1) .. junk[math.random(#junk)] .. base:sub(k + 1)
+                end
+                local jx = glitch and math.random(-6, 6) or math.random(-1, 1)
+                local jy = glitch and math.random(-4, 4) or 0
+                if logoState.shake > 0 then
+                    jx = jx + math.random(-logoState.shake, logoState.shake)
+                    jy = jy + math.random(-logoState.shake, logoState.shake)
+                end
+                logoText.Text = txt
+                logoText.TextColor3 = main
+                logoText.Position = UDim2.new(0, 8 + jx, 0, jy)
+                ghostR.Text = txt
+                ghostB.Text = txt
+                ghostR.Position = UDim2.new(0, 8 + jx - (glitch and 4 or 2), 0, jy)
+                ghostB.Position = UDim2.new(0, 8 + jx + (glitch and 4 or 2), 0, jy)
+                task.wait(glitch and 0.05 or 0.08)
+            end
+        end)
+    end
+    blurEffect.Name = "PureLoaderBlur"
     blurEffect.Size = 0
     blurEffect.Parent = game:GetService("Lighting")
+    getgenv().PureLoaderCleanup = function()
+        pcall(function() gui.Enabled = false end)
+        pcall(function() gui:Destroy() end)
+        pcall(function() blurEffect:Destroy() end)
+    end
+    -- HARD BACKUP: if the loader thread dies/hangs, still remove the white screen + blur
+    task.spawn(function()
+        task.wait(12)
+        pcall(function() blurEffect:Destroy() end)
+        task.wait(48)
+        pcall(function() gui.Enabled = false end)
+        pcall(function() gui:Destroy() end)
+        pcall(function() blurEffect.Size = 0 end)
+        pcall(function() blurEffect:Destroy() end)
+    end)
     
     local startSound = Instance.new("Sound")
     startSound.SoundId = sounds.start
@@ -417,7 +635,47 @@ local success_loader, err_loader = xpcall(function()
         "01001000 01101001", "roblox is no longer robloz", "PURE-MAN",
         "IM SKYLER WHITE, YO", "my diet is pure", "ur definitely using delta cuz idk",
         "dab me up :>", "how much saves do u has", "O rly", ":3",
-        "helohi", "portal above portal below *jumps in*", "ifone 90 proe max", "what game is this :s"
+        "helohi", "portal above portal below *jumps in*", "ifone 90 proe max", "what game is this :s",
+        "my aim is like ur love life: always missing",
+        "this script is harder than ur morning wood",
+        "holy shit that loaded faster than ur ex moved on",
+        "ur ping is higher than ur mom's standards",
+        "cock-eyed aimbot loading... jk it's smooth as hell",
+        "bro ur fps drops harder than ur pants at a party",
+        "i'd tap that... the headshot ofc",
+        "damn ur lag is hornier than ur search history",
+        "this loader got more thrust than ur dad",
+        "wiping ur ass with 0 calories, still pure",
+        "load nhanh hon thang ban ngoai 3 giay",
+        "dm load lau vl, nhu cho me nau com",
+        "aim chuan hon cu nem cua may vao crush",
+        "script nay cung hon ca sang thu hai",
+        "lag nhu cai nguoi yeu cu, khong ai chiu noi",
+        "ping cao hon cai tam nhin cua may",
+        "dit con me no, sao dep the nay",
+        "vcl cai script nay ngon hon ca pho bo",
+        "sut ping nhu sut diem gpa, tuyet vong",
+        "xem cai load nay di, nhin la muon dua ngay",
+        "bad injector? more like bad decisions in bed",
+        "fuck around and find out (the loading screen)",
+        "ur aimbot has more hits than ur tinder",
+        "i came for the esp, stayed for the dick jokes",
+        "this progress bar is slower than ur pickup lines",
+        "damn son where'd u find this loader, in ur dads sock drawer?",
+        "loading balls... i mean loading libraries",
+        "npc energy detected, ur personality included",
+        "even the npcs are laughing at ur k/d",
+        "yo mama so fat her hitbox needs its own server",
+        "yo mama so old her ping is in roman numerals",
+        "touch grass, touch gravel, don't touch my pure",
+        "chim be bu cu, script nay van load xong",
+        "troi oi cai ngay load script ma nhu cai ngay cuoi thang",
+        "hoi ngu: aim bot hay aim bo? aim ban, bo cho",
+        "bo may o day ma con dam lag a",
+        "aimbot on, brain off, standard procedure",
+        "shit's so smooth it made ur ex jealous",
+        "pure.cc: dirty mouth, clean script",
+        "may nho dat 2 chu pure.cc ngoai cua nhe"
     }
     
     local typingEnabled = true
@@ -513,7 +771,7 @@ local success_loader, err_loader = xpcall(function()
         for _, sound in ipairs(bsodGlitchSounds) do sound:Destroy() end
         for _, sound in ipairs(softGlitchSounds) do sound:Destroy() end
         gui:Destroy()
-        blurEffect:Destroy()
+        pcall(function() blurEffect:Destroy() end)
         return false
     end
     
@@ -809,8 +1067,8 @@ local success_loader, err_loader = xpcall(function()
     playGlitchStartAnimation()
     task.wait(0.3)
     
-    local fadeIn = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    TweenService:Create(blurEffect, fadeIn, {Size = 24}):Play()
+    local fadeIn = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    TweenService:Create(blurEffect, fadeIn, {Size = 8}):Play()
     
     task.spawn(startFastTyping)
     
@@ -932,6 +1190,13 @@ local success_loader, err_loader = xpcall(function()
         filled = totalBars
         UIObject3.Text = "[" .. string.rep("|", totalBars) .. "]"
         UIObject4.Text = "100%"
+        pcall(function()
+            TweenService:Create(blurEffect, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = 0}):Play()
+            task.delay(0.3, function()
+                pcall(function() blurEffect:Destroy() end)
+                if getgenv().PureKillBlur then getgenv().PureKillBlur() end
+            end)
+        end)
         while checkIndex < #checkOrder do
             checkIndex = checkIndex + 1
             local c = checkOrder[checkIndex]
@@ -980,6 +1245,12 @@ local success_loader, err_loader = xpcall(function()
         task.wait(0.4)
         humSound:Stop()
         if isCompatible then
+            local LS = getgenv().PureLogoState
+            if LS then
+                LS.green = true
+                LS.shake = 8
+                task.delay(1.2, function() LS.shake = 0 end)
+            end
             ambientGlitchActive = false
             typingEnabled = false
             setTextLabelsColor(Color3.fromRGB(0, 255, 0))
@@ -1104,7 +1375,7 @@ local success_loader, err_loader = xpcall(function()
             whiteFlash.BackgroundTransparency = 0
             whiteFlash.ZIndex = 1000
             whiteFlash.Parent = gui
-            TweenService:Create(blurEffect, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = 0}):Play()
+            pcall(function() blurEffect:Destroy() end)
             task.wait(0.35)
             startSound:Destroy()
             humSound:Destroy()
@@ -1122,8 +1393,10 @@ local success_loader, err_loader = xpcall(function()
                 sound:Destroy()
             end
             gui:Destroy()
-            blurEffect:Destroy()
+            pcall(function() blurEffect:Destroy() end)
         else
+            local LS = getgenv().PureLogoState
+            if LS then LS.red = true LS.shake = 6 end
             ambientGlitchActive = false
             typingEnabled = false
             setTextLabelsColor(Color3.fromRGB(255, 0, 0))
@@ -1194,7 +1467,7 @@ local success_loader, err_loader = xpcall(function()
             flash.ZIndex = 1000
             flash.Parent = gui
             local fadeOut = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-            TweenService:Create(blurEffect, fadeOut, {Size = 0}):Play()
+            pcall(function() blurEffect:Destroy() end)
             task.wait(0.1)
             startSound:Destroy()
             humSound:Destroy()
@@ -1212,7 +1485,7 @@ local success_loader, err_loader = xpcall(function()
                 sound:Destroy()
             end
             gui:Destroy()
-            blurEffect:Destroy()
+            pcall(function() blurEffect:Destroy() end)
         end
     end)
     return true
@@ -1225,6 +1498,38 @@ if not success_loader then
 end
 
 task.wait(6)
+
+-- ==========================================
+-- // LOADER WATCHDOG (fix white screen / hourglass stuck)
+-- ==========================================
+task.spawn(function()
+    task.wait(50)
+    for _ = 1, 20 do
+        local roots = {game:GetService("CoreGui")}
+        if type(gethui) == "function" then
+            local ok, hui = pcall(gethui)
+            if ok and hui then table.insert(roots, hui) end
+        end
+        for _, root in ipairs(roots) do
+            pcall(function()
+                for _, obj in ipairs(root:GetChildren()) do
+                    if obj:IsA("ScreenGui") and (obj.Name == "water" or obj.Name == "InitializingGui") then
+                        obj.Enabled = false
+                        obj:Destroy()
+                    end
+                end
+            end)
+        end
+        pcall(function()
+            for _, obj in ipairs(game:GetService("Lighting"):GetChildren()) do
+                if obj:IsA("BlurEffect") and obj.Size >= 1 and obj.Name ~= "GlobalUIBlur" then
+                    obj:Destroy()
+                end
+            end
+        end)
+        task.wait(0.5)
+    end
+end)
 
 -- ==========================================
 -- // LOAD MODULES
@@ -3901,6 +4206,10 @@ local config = {
     },
 }
 
+-- PURE FIX: these were `local function` defined AFTER code that calls them -> "attempt to call a nil value".
+-- Forward-declared here so every earlier function sees the real one.
+local addesp, hasForcefield, restoreTorso, Window
+
 local rng_s = {
     lezzzgoo = config.varibz.btntitle[math.random(1, #config.varibz.btntitle)],
     Spotify = config.varibz.popz2[math.random(1, #config.varibz.popz2)],
@@ -5597,7 +5906,7 @@ local function autolaodbssthing_()
                 memory[gameId] = nil
                 modified = true
                 removedCount = removedCount + 1
-            elseif actual thenName ~= data.saveName then
+            elseif actualName ~= data.saveName then
                 data.saveName = actualName
                 modified = true
             end
@@ -5607,7 +5916,7 @@ local function autolaodbssthing_()
     if modified then
         writehaxsandstuff_(memory)
         if removedCount > 0 then
-            aut       olaodpara()
+            autolaodpara()
         end
     end
     return removedCount
@@ -5617,8 +5926,7 @@ end
 -- // DELET nION FUNCTIONS
 -- ==========================================
 local function deleteSave(saveName)
-    if not saveName or saveName ==({
- "" then
+    if not saveName or saveName == "" then
         n({
             Title = "Pure.cc",
             Content = "dude put a name :/",
@@ -5645,7 +5953,9 @@ local function deleteSave(saveName)
         saveName = exactMatch
     end
     local path = getSavePath(saveName)
-    if not isfile(path)            Title = "Pure.cc",
+    if not isfile(path) then
+        n({
+            Title = "Pure.cc",
             Content = "Save '" .. saveName .. "' not found!",
             Audio = "rbxassetid://17208361335",
             Length = 2,
@@ -6132,7 +6442,7 @@ end
 -- ==========================================
 -- // FORCEFIELD CHECK
 -- ==========================================
-local function hasForcefield(character)
+function hasForcefield(character)
     if not character then return false end
     if config.ignoreForcefield == false then
         return false
@@ -7472,7 +7782,7 @@ end
 -- ==========================================
 -- // RESTORE TORSO
 -- ==========================================
-local function restoreTorso(targetPlayer)
+function restoreTorso(targetPlayer)
     if not targetPlayer then return end
     local original = config.hitboxOriginalSizes[targetPlayer]
     if original and original.part and original.part.Parent then
@@ -7769,7 +8079,7 @@ end
 -- ==========================================
 -- // ADDESP (base check)
 -- ==========================================
-local function addesp(targetPlayer)
+function addesp(targetPlayer)
     if not targetPlayer then return false end
     if typeof(targetPlayer) == "Instance" and
        (targetPlayer:IsA("BasePart") or targetPlayer:IsA("Tool") or targetPlayer:IsA("HopperBin")) then
@@ -9452,6 +9762,284 @@ end
 -- These functions are defined in Part 6
 -- (AntiAim, Desync, World Xray, ProximityPrompt, Fly, Noclip, etc.)
 
+-- ==========================================
+-- // PURE FIX: REAL IMPLEMENTATIONS (these used to be empty stubs)
+-- ==========================================
+-- Runs one init step safely and prints which step failed (so the script never dies half-way)
+config.varibz.pureStep = function(name, fn)
+    if type(fn) ~= "function" then return false end
+    local ok, err = xpcall(fn, function(e) return debug.traceback(tostring(e), 2) end)
+    if not ok then
+        warn("[Pure] step '" .. tostring(name) .. "' failed: " .. tostring(err))
+    end
+    return ok
+end
+
+-- ESP master switch (wires the toggle to the existing ESP code)
+if not applyESPMaster then
+    applyESPMaster = function(state)
+        state = state and true or false
+        config.espMasterEnabled = state
+        if state and not (config.prefTextESP or config.prefBoxESP or config.prefHealthESP
+            or config.prefHeadDotESP or config.prefHighlightESP) then
+            config.prefTextESP = true
+            config.prefBoxESP = true
+        end
+        config.espon = state and config.prefTextESP or false
+        config.highlightesp = state and config.prefHighlightESP or false
+        pcall(espRefresher)
+        if not config.varibz.pureEspLoop then
+            config.varibz.pureEspLoop = true
+            task.spawn(function()
+                while getgenv().PureHub_Loaded do
+                    task.wait(1)
+                    if config.espMasterEnabled then
+                        pcall(espRefresher)
+                    end
+                end
+                config.varibz.pureEspLoop = false
+            end)
+        end
+    end
+end
+
+-- X-Ray
+if not ShouldXrayPart then
+    ShouldXrayPart = function(part)
+        if not part or not part:IsA("BasePart") then return false end
+        if part.Transparency >= 0.99 then return false end
+        local model = part:FindFirstAncestorOfClass("Model")
+        while model do
+            if model:FindFirstChildOfClass("Humanoid") then return false end
+            local parent = model.Parent
+            model = parent and parent:FindFirstAncestorOfClass("Model") or nil
+        end
+        return true
+    end
+end
+if not ApplyXray then
+    ApplyXray = function()
+        local trans = config.worldXrayTransparency or 0.5
+        local n = 0
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and ShouldXrayPart(obj) then
+                if config.worldXrayOriginalValues[obj] == nil then
+                    config.worldXrayOriginalValues[obj] = obj.Transparency
+                end
+                pcall(function() obj.Transparency = math.max(config.worldXrayOriginalValues[obj], trans) end)
+                n = n + 1
+                if n % 400 == 0 then task.wait() end
+            end
+        end
+    end
+end
+if not UpdateXrayTransparency then
+    UpdateXrayTransparency = function()
+        local trans = config.worldXrayTransparency or 0.5
+        for obj, orig in pairs(config.worldXrayOriginalValues) do
+            if obj and obj.Parent then
+                pcall(function() obj.Transparency = math.max(orig, trans) end)
+            end
+        end
+    end
+end
+if not RestoreXray then
+    RestoreXray = function()
+        for obj, orig in pairs(config.worldXrayOriginalValues) do
+            if obj and obj.Parent then
+                pcall(function() obj.Transparency = orig end)
+            end
+        end
+        config.worldXrayOriginalValues = {}
+        if config.worldXrayConnection then
+            config.worldXrayConnection:Disconnect()
+            config.worldXrayConnection = nil
+        end
+    end
+end
+
+-- ProximityPrompt mods
+if not ApplyProximityPrompts then
+    ApplyProximityPrompts = function()
+        local function apply(obj)
+            if config.worldProximityOriginalValues[obj] == nil then
+                config.worldProximityOriginalValues[obj] = {
+                    HoldDuration = obj.HoldDuration,
+                    MaxActivationDistance = obj.MaxActivationDistance,
+                    MaxIndicatorDistance = obj.MaxIndicatorDistance,
+                }
+            end
+            pcall(function()
+                obj.HoldDuration = config.worldProximityHoldDuration or 0
+                obj.MaxActivationDistance = config.worldProximityMaxActivation or 100
+                obj.MaxIndicatorDistance = config.worldProximityMaxIndicator or 100
+            end)
+        end
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then apply(obj) end
+        end
+        if not config.varibz.pureProxConn then
+            config.varibz.pureProxConn = workspace.DescendantAdded:Connect(function(obj)
+                if config.worldProximityEnabled and obj:IsA("ProximityPrompt") then
+                    apply(obj)
+                end
+            end)
+        end
+    end
+end
+
+-- Fire interactions (touch / click detectors / proximity prompts)
+if not FireInteractions then
+    FireInteractions = function()
+        local count = 0
+        local types = config.worldFireType or {"TouchInterest"}
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local want = {}
+        for _, t in ipairs(types) do want[t] = true end
+        for i, obj in ipairs(workspace:GetDescendants()) do
+            if want.TouchInterest and hrp and type(firetouchinterest) == "function" and obj:IsA("TouchTransmitter") then
+                local part = obj.Parent
+                if part and part:IsA("BasePart") and not part:IsDescendantOf(char) then
+                    pcall(function()
+                        firetouchinterest(hrp, part, 0)
+                        firetouchinterest(hrp, part, 1)
+                    end)
+                    count = count + 1
+                end
+            elseif want.ClickDetectors and type(fireclickdetector) == "function" and obj:IsA("ClickDetector") then
+                pcall(fireclickdetector, obj)
+                count = count + 1
+            elseif want.ProximityPrompts and type(fireproximityprompt) == "function" and obj:IsA("ProximityPrompt") then
+                pcall(fireproximityprompt, obj)
+                count = count + 1
+            end
+            if i % 300 == 0 then task.wait() end
+        end
+        return count
+    end
+end
+if not StartLoopFire then
+    StartLoopFire = function()
+        config.varibz.pureLoopFireToken = (config.varibz.pureLoopFireToken or 0) + 1
+        local token = config.varibz.pureLoopFireToken
+        task.spawn(function()
+            while config.worldLoopFireEnabled and config.varibz.pureLoopFireToken == token and getgenv().PureHub_Loaded do
+                pcall(FireInteractions)
+                task.wait(math.max(config.worldLoopFireInterval or 1, 0.1))
+            end
+        end)
+    end
+end
+if not StopLoopFire then
+    StopLoopFire = function()
+        config.varibz.pureLoopFireToken = (config.varibz.pureLoopFireToken or 0) + 1
+    end
+end
+
+-- Live-apply slider changes for X-Ray / ProximityPrompts
+task.spawn(function()
+    while getgenv().PureHub_Loaded do
+        task.wait(1)
+        if config.worldXrayEnabled and config.varibz.pureLastXrayTrans ~= config.worldXrayTransparency then
+            config.varibz.pureLastXrayTrans = config.worldXrayTransparency
+            pcall(UpdateXrayTransparency)
+        end
+        if config.worldProximityEnabled then
+            local sig = tostring(config.worldProximityHoldDuration) .. "|" .. tostring(config.worldProximityMaxActivation)
+            if config.varibz.pureLastProxSig ~= sig then
+                config.varibz.pureLastProxSig = sig
+                pcall(ApplyProximityPrompts)
+            end
+        end
+    end
+end)
+
+-- AUTO REJOIN when kicked / banned / disconnected
+config.varibz.pureSetupRejoin = function()
+    local GuiService = game:GetService("GuiService")
+    local busy = false
+    local function pureRejoin(reason)
+        if busy or config.autoRejoin == false then return end
+        local genv = getgenv()
+        local now = os.time()
+        local fresh = {}
+        for _, t in ipairs(genv.PureHub_RejoinLog or {}) do
+            if now - t < 180 then table.insert(fresh, t) end
+        end
+        genv.PureHub_RejoinLog = fresh
+        if #fresh >= 3 then
+            warn("[Pure] Auto Rejoin stopped: 3 rejoins in 3 minutes (probably banned from this game).")
+            return
+        end
+        table.insert(fresh, now)
+        busy = true
+        warn("[Pure] Kicked/disconnected (" .. tostring(reason) .. "). Rejoining...")
+        local url = genv.PureHub_ScriptURL
+        if type(queue_on_teleport) == "function" and type(url) == "string" and url ~= "" then
+            pcall(queue_on_teleport, 'loadstring(game:HttpGet("' .. url .. '"))()')
+        end
+        genv.PureHub_Loaded = false
+        task.wait(1)
+        local ok = pcall(function()
+            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+        end)
+        if not ok then
+            genv.PureHub_Loaded = true
+        end
+        task.delay(15, function() busy = false end)
+    end
+    pcall(function()
+        GuiService.ErrorMessageChanged:Connect(function()
+            local msg = ""
+            pcall(function() msg = GuiService:GetErrorMessage() end)
+            if msg ~= "" then pureRejoin(msg) end
+        end)
+    end)
+    task.spawn(function()
+        local cg = game:GetService("CoreGui")
+        local pg = cg:WaitForChild("RobloxPromptGui", 15)
+        local overlay = pg and pg:WaitForChild("promptOverlay", 15)
+        if not overlay then return end
+        local function check(child)
+            if child.Name == "ErrorPrompt" then pureRejoin("ErrorPrompt") end
+        end
+        overlay.ChildAdded:Connect(check)
+        for _, child in ipairs(overlay:GetChildren()) do check(child) end
+    end)
+end
+
+if type(mousemoverel) ~= "function" then
+    mousemoverel = function() end
+end
+if not updateTeamTargetModes then
+    updateTeamTargetModes = function() end
+end
+if not loadSave then
+    loadSave = function(name)
+        local real = uhhhhgetnamesbetter and uhhhhgetnamesbetter(name) or name
+        local data = loadSaveData and loadSaveData(real)
+        if type(data) ~= "table" then
+            n({Title = "Pure.cc", Content = "save not found: " .. tostring(name), Length = 2, BarColor = Color3.fromRGB(255, 0, 0)})
+            return
+        end
+        local src = (type(data.config) == "table" and data.config) or data
+        for k, v in pairs(src) do
+            local cur = config[k]
+            if cur ~= nil and type(v) == type(cur) then
+                if type(v) == "table" then
+                    for k2, v2 in pairs(v) do
+                        if type(cur[k2]) == type(v2) and type(v2) ~= "table" then cur[k2] = v2 end
+                    end
+                else
+                    config[k] = v
+                end
+            end
+        end
+        getgenv().PureHub_Saves.CurrentSave = real
+        n({Title = "Pure.cc", Content = "loaded save: " .. tostring(real), Length = 2, BarColor = Color3.fromRGB(0, 255, 150)})
+    end
+end
 -- Placeholder stubs to allow script to run even if Part 6 not merged
 if not antiAimUpdate then
     antiAimUpdate = function() end
@@ -9533,53 +10121,6 @@ end
 -- // END OF PART 5
 -- ==========================================
 
-return {
-    config = config,
-    gui = gui,
-    helpers = {
-        handleAimbotToggle = handleAimbotToggle,
-        toggle360Aimbot = toggle360Aimbot,
-        updateAimbotFOVRing = updateAimbotFOVRing,
-        aimbotfov = aimbotfov,
-        aimbotUpdate = aimbotUpdate,
-        triggerBotUpdate = triggerBotUpdate,
-        toggleTriggerBot = toggleTriggerBot,
-        createTriggerBotFOV = createTriggerBotFOV,
-        updateTriggerBotFOV = updateTriggerBotFOV,
-        spinbotUpdate = spinbotUpdate,
-        toggleBHop = toggleBHop,
-        bhopUpdate = bhopUpdate,
-        ineedinvistool = ineedinvistool,
-        burgerking = burgerking,
-        CreateQT = CreateQT,
-        KillQT = KillQT,
-        UpdateQT = UpdateQT,
-        coolzestyuithing_diehedijsi_iwhwked = coolzestyuithing_diehedijsi_iwhwked,
-        saveTargetOriginalPosition = saveTargetOriginalPosition,
-        restoreTargetOriginalPosition = restoreTargetOriginalPosition,
-        getValidAutoFarmTargets = getValidAutoFarmTargets,
-        tptocrossWithAlignment = tptocrossWithAlignment,
-        checkTargetHealth = checkTargetHealth,
-        teleportTargetToLocalPlayerFront = teleportTargetToLocalPlayerFront,
-        autoFarmProcess = autoFarmProcess,
-        stopAutoFarm = stopAutoFarm,
-        saveConfig = saveConfig,
-        deleteSave = deleteSave,
-        deleteAllSaves = deleteAllSaves,
-        SETDAAUTOLAOD_ = SETDAAUTOLAOD_,
-        nullifymahfilez_ = nullifymahfilez_,
-        autolaodbssthing_ = autolaodbssthing_,
-        autolaodpara = autolaodpara,
-        startdaautlado_ = nil, -- defined in Part 6
-        detectrem__________ = detectrem__________,
-        rerempara________ = rerempara________,
-        localPlayer = localPlayer,
-        plr = plr,
-        excusemesir = excusemesir,
-        n = n,
-        getgist_ = getgist_,
-    }
-}
 
 -- ==========================================
 -- // SILENTAIM (HK) - FULL HOOK SYSTEM
@@ -9617,7 +10158,7 @@ local function calc_chance(chance)
 end
 
 if callmyoldname then
-    if not hookmetamethod or not hookfunction then
+    if not HAS_HOOKS then
         warn("[Pure]: Your exploit doesn't support hooking functions")
         return false
     end
@@ -9635,6 +10176,9 @@ local function mouse()
             end
         end
     end
+    if not HAS_HOOKS then
+        return
+    end
     if errrrrr and not config.varibz.sa2dump.rat then
         config.varibz.sa2dump.rat = true
         mouseywousey = hookmetamethod(game, "__index", newcclosure(function(self, key)
@@ -9644,7 +10188,7 @@ local function mouse()
             if config.varibz.respawnLock then
                 return mouseywousey(self, key)
             end
-            if checkcaller() then
+            if HAS_CHECKCALLER and checkcaller() then
                 return mouseywousey(self, key)
             end
             local localMouse = plr:GetMouse()
@@ -9694,13 +10238,14 @@ local function mouse()
         end))
     elseif not errrrrr and config.varibz.sa2dump.rat then
         config.varibz.sa2dump.rat = false
-        if mouseywousey then
+        if HAS_HOOKS and mouseywousey then
             hookmetamethod(game, "__index", mouseywousey)
             mouseywousey = nil
         end
     end
 end
 
+if HAS_HOOKS then
 callmyoldname = hookmetamethod(game, "__namecall", newcclosure(function(...)
     if not hookmetamethod or not hookfunction then
         warn("[Pure]: Your exploit doesn't support hooking functions")
@@ -9716,7 +10261,7 @@ callmyoldname = hookmetamethod(game, "__namecall", newcclosure(function(...)
     if not rayo and not remotebattery then
         return callmyoldname(...)
     end
-    if checkcaller() then
+    if HAS_CHECKCALLER and checkcaller() then
         return callmyoldname(...)
     end
     local raycatism = false
@@ -9952,6 +10497,7 @@ callmyoldname = hookmetamethod(game, "__namecall", newcclosure(function(...)
     end
     return callmyoldname(unpack(newArgs))
 end))
+end
 
 function sa2_________________()
     local currentTime = tick()
@@ -9986,9 +10532,13 @@ end
 -- ==========================================
 -- // FOV CIRCLE (SA2)
 -- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "48621826482727_83638_73763826382"
+ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = excusemesir.CoreGui
 ScreenGui.IgnoreGuiInset = true
+
+local CircleFrame = Instance.new("Frame")
 CircleFrame.Name = "FOVCircle"
 CircleFrame.Parent = ScreenGui
 CircleFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -9996,8 +10546,12 @@ CircleFrame.BackgroundColor3 = config.SA2_FovColor
 CircleFrame.BackgroundTransparency = 1
 CircleFrame.BorderSizePixel = 0
 CircleFrame.Visible = false
+
+local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(1, 0)
 UICorner.Parent = CircleFrame
+
+local UIStroke = Instance.new("UIStroke")
 UIStroke.Color = config.SA2_FovColor
 UIStroke.Thickness = 1
 UIStroke.Transparency = 1 - config.SA2_FovTransparency
@@ -11029,7 +11583,7 @@ elseif isTablet then
     size = config.Gradow.windowSize.tablet
 end
 
-local Window = WindUI:CreateWindow({
+Window = WindUI:CreateWindow({
     Title = rng5(),
     Author = "[Pure Dev]",
     Folder = "PureHub_Saves",
@@ -11403,6 +11957,21 @@ end)
 -- // MAKE ALL TABS
 -- ==========================================
 local makeeverysingletabs = function()
+    -- NPC switch helper (players + NPCs, ESP and aim share the same target list)
+    local function setNPCMode(v)
+        config.npcMode = v and true or false
+        if config.npcMode then
+            config.masterTarget = config.npcOnly and "NPCs" or "Both"
+        else
+            config.masterTarget = "Players"
+        end
+        if type(config.scope) ~= "table" then config.scope = {"Humanoids"} end
+        if not table.find(config.scope, "Humanoids") then table.insert(config.scope, "Humanoids") end
+        config.varibz.npcCache.lastRefresh = 0
+        config.varibz.npcCache.list = {}
+        pcall(function() if config.espMasterEnabled then espRefresher() end end)
+        pcall(kshakwieudhjs_skjwnejzjs)
+    end
     -- MainTab
     local MainTab = Window:Tab({
         Title = "Main",
@@ -11420,6 +11989,12 @@ local makeeverysingletabs = function()
             Desc = "go away evil localspirit",
             Value = config.antikick or true,
             Callback = function(v) localscripts_are_wayy_too_gullible__(v) end
+        })
+        MainTab:Toggle({
+            Title = "Auto Rejoin",
+            Desc = "rejoin automatically when kicked / banned / disconnected",
+            Value = config.autoRejoin ~= false,
+            Callback = function(v) config.autoRejoin = v end
         })
         MainTab:Paragraph({
             Title = "Global",
@@ -11459,6 +12034,12 @@ local makeeverysingletabs = function()
                 updateTeamTargetModes()
                 kshakwieudhjs_skjwnejzjs()
             end
+        })
+        MainTab:Toggle({
+            Title = "NPC Switch",
+            Desc = "ESP + aim also hit NPCs (bots, mobs, dummies)",
+            Value = config.npcMode or false,
+            Callback = function(v) setNPCMode(v) end
         })
         MainTab:Dropdown({
             Title = "TargetType",
@@ -13056,8 +13637,704 @@ local makeeverysingletabs = function()
             Icon = "download",
             Callback = function() BMG:load() end
         })
+
+        BGMTab:Space()
+        BGMTab:Paragraph({
+            Title = "Extra Music (Pure)",
+            Desc = "your own IDs. Edit PURE_EXTRA_MUSIC at the top of the file or add one below",
+            Color = config.Gradow.uicolor.lightGreen
+        })
+        do
+            local extra = {}
+            local names = {}
+            local function refresh()
+                names = {}
+                for _, m in ipairs(extra) do names[#names + 1] = m.name .. " (" .. m.id .. ")" end
+            end
+            for _, m in ipairs(getgenv().PURE_EXTRA_MUSIC or {}) do
+                if type(m) == "table" and m.id then extra[#extra + 1] = {name = tostring(m.name or m.id), id = tostring(m.id)} end
+            end
+            pcall(function()
+                if isfile("PureHub_Saves/extra_music.json") then
+                    local d = HttpService:JSONDecode(readfile("PureHub_Saves/extra_music.json"))
+                    for _, m in ipairs(d) do extra[#extra + 1] = m end
+                end
+            end)
+            refresh()
+            local sound = Instance.new("Sound")
+            sound.Name = "PureExtraMusic"
+            sound.Looped = true
+            sound.Volume = 1
+            sound.Parent = game:GetService("SoundService")
+            local current, newName, newId = nil, "", ""
+            local dd
+            dd = BGMTab:Dropdown({
+                Title = "Select Extra Music",
+                Desc = #names == 0 and "list is empty - add an ID below" or "pick a song",
+                Values = #names > 0 and names or {"(empty)"},
+                Value = names[1] or "(empty)",
+                Multi = false,
+                Callback = function(sel)
+                    current = sel and sel:match("%((%d+)%)")
+                end
+            })
+            BGMTab:Toggle({Title = "Play Extra Music", Desc = "play / stop", Value = false, Callback = function(v)
+                if v and current then
+                    sound.SoundId = "rbxassetid://" .. current
+                    sound:Play()
+                else
+                    sound:Stop()
+                end
+            end})
+            BGMTab:Slider({Title = "Extra Volume", Desc = "loudness", Step = 0.1, Value = {Min = 0, Max = 5, Default = 1}, Callback = function(v) sound.Volume = v end})
+            BGMTab:Input({Title = "Song Name", Desc = "any name", Placeholder = "my song", Callback = function(v) newName = v end})
+            BGMTab:Input({Title = "Audio ID", Desc = "numbers only", Placeholder = "1234567890", Callback = function(v) newId = (v or ""):gsub("%D", "") end})
+            BGMTab:Button({Title = "Add Song", Desc = "saves to file, shows after reload", Icon = "plus", Callback = function()
+                if newId == "" then
+                    n({Title = "Pure.cc", Content = "enter an audio id first", Length = 2, BarColor = Color3.fromRGB(255, 0, 0)})
+                    return
+                end
+                extra[#extra + 1] = {name = newName ~= "" and newName or newId, id = newId}
+                pcall(function()
+                    if not isfolder("PureHub_Saves") then makefolder("PureHub_Saves") end
+                    writefile("PureHub_Saves/extra_music.json", HttpService:JSONEncode(extra))
+                end)
+                refresh()
+                n({Title = "Pure.cc", Content = "added " .. newId .. " (re-open menu to see it)", Length = 3, BarColor = Color3.fromRGB(0, 255, 150)})
+            end})
+        end
     end
     
+    -- ==========================================
+    -- // NEW TAB 1: MOVEMENT+
+    -- ==========================================
+    local MoveTab = Window:Tab({
+        Title = "Movement+",
+        Desc = "fly, infinite jump & more",
+        Icon = "wind",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        local S = {fly = false, flySpeed = 60, infJump = false, antiVoid = false, spin = false}
+        config.varibz.pureMove = S
+        local function hrp()
+            local c = LocalPlayer.Character
+            return c and c:FindFirstChild("HumanoidRootPart"), c and c:FindFirstChildOfClass("Humanoid")
+        end
+        local flyBV, flyBG, flyConn
+        local function stopFly()
+            if flyConn then flyConn:Disconnect() flyConn = nil end
+            if flyBV then flyBV:Destroy() flyBV = nil end
+            if flyBG then flyBG:Destroy() flyBG = nil end
+            local _, hum = hrp()
+            if hum then hum.PlatformStand = false end
+        end
+        local function startFly()
+            stopFly()
+            local root, hum = hrp()
+            if not root or not hum then return end
+            hum.PlatformStand = true
+            flyBV = Instance.new("BodyVelocity")
+            flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+            flyBV.Velocity = Vector3.zero
+            flyBV.Parent = root
+            flyBG = Instance.new("BodyGyro")
+            flyBG.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+            flyBG.P = 9000
+            flyBG.Parent = root
+            flyConn = RunService.RenderStepped:Connect(function()
+                local r, h = hrp()
+                if not r or not h or not S.fly then return stopFly() end
+                local cam = workspace.CurrentCamera
+                local dir = h.MoveDirection
+                local vel = Vector3.zero
+                if dir.Magnitude > 0 then
+                    -- move toward where the camera looks (works with the mobile joystick)
+                    local look = cam.CFrame.LookVector
+                    local right = cam.CFrame.RightVector
+                    local fwd = dir:Dot(Vector3.new(look.X, 0, look.Z).Unit)
+                    local side = dir:Dot(Vector3.new(right.X, 0, right.Z).Unit)
+                    vel = (look * fwd + right * side) * S.flySpeed
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vel = vel + Vector3.new(0, S.flySpeed, 0) end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then vel = vel - Vector3.new(0, S.flySpeed, 0) end
+                flyBV.Velocity = vel
+                flyBG.CFrame = cam.CFrame
+            end)
+        end
+        MoveTab:Paragraph({Title = "Fly", Desc = "joystick = move where camera looks, jump = up", Color = config.Gradow.uicolor.lightGreen})
+        MoveTab:Toggle({Title = "Fly", Desc = "toggle flight", Value = false, Callback = function(v)
+            S.fly = v
+            if v then startFly() else stopFly() end
+        end})
+        MoveTab:Slider({Title = "Fly Speed", Desc = "studs/sec", Step = 5, Value = {Min = 10, Max = 300, Default = 60}, Callback = function(v) S.flySpeed = v end})
+        MoveTab:Space()
+        MoveTab:Toggle({Title = "Infinite Jump", Desc = "jump in mid-air", Value = false, Callback = function(v) S.infJump = v end})
+        UserInputService.JumpRequest:Connect(function()
+            if S.infJump then
+                local _, hum = hrp()
+                if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+            end
+        end)
+        MoveTab:Toggle({Title = "Anti Void", Desc = "teleport back up if you fall too far", Value = false, Callback = function(v) S.antiVoid = v end})
+        task.spawn(function()
+            local lastSafe
+            while getgenv().PureHub_Loaded do
+                task.wait(0.25)
+                local root = hrp()
+                if root then
+                    local floor = workspace.FallenPartsDestroyHeight
+                    if S.antiVoid then
+                        if root.Position.Y > floor + 60 then
+                            lastSafe = root.CFrame
+                        elseif lastSafe and root.Position.Y < floor + 25 then
+                            root.AssemblyLinearVelocity = Vector3.zero
+                            root.CFrame = lastSafe + Vector3.new(0, 5, 0)
+                        end
+                    end
+                end
+            end
+        end)
+        MoveTab:Space()
+        MoveTab:Toggle({Title = "Spin", Desc = "spin your character", Value = false, Callback = function(v)
+            S.spin = v
+            if v then
+                task.spawn(function()
+                    while S.spin and getgenv().PureHub_Loaded do
+                        local root = hrp()
+                        if root then root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(20), 0) end
+                        task.wait()
+                    end
+                end)
+            end
+        end})
+        MoveTab:Button({Title = "Reset Character", Desc = "respawn", Icon = "refresh-cw", Callback = function()
+            local _, hum = hrp()
+            if hum then hum.Health = 0 end
+        end})
+    end
+
+    -- ==========================================
+    -- // NEW TAB 2: UTILITY
+    -- ==========================================
+    local UtilTab = Window:Tab({
+        Title = "Utility",
+        Desc = "server tools & performance",
+        Icon = "wrench",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        UtilTab:Paragraph({Title = "Server", Desc = "rejoin / hop / info", Color = config.Gradow.uicolor.lightGreen})
+        UtilTab:Button({Title = "Rejoin Server", Desc = "same server if possible", Icon = "refresh-cw", Callback = function()
+            pcall(function()
+                if #Players:GetPlayers() <= 1 then
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                else
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+                end
+            end)
+        end})
+        UtilTab:Button({Title = "New Server", Desc = "join a fresh server", Icon = "shuffle", Callback = function()
+            pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
+        end})
+        UtilTab:Button({Title = "Copy Server JobId", Desc = "to clipboard", Icon = "copy", Callback = function()
+            if type(setclipboard) == "function" then setclipboard(game.JobId) end
+            n({Title = "Pure.cc", Content = "JobId: " .. tostring(game.JobId), Length = 3, BarColor = Color3.fromRGB(0, 255, 150)})
+        end})
+        UtilTab:Space()
+        UtilTab:Paragraph({Title = "Performance", Desc = "lower lag", Color = config.Gradow.uicolor.lightGreen})
+        local saved = {}
+        UtilTab:Toggle({Title = "FPS Boost", Desc = "disable shadows, effects, smooth materials", Value = false, Callback = function(v)
+            local L = game:GetService("Lighting")
+            if v then
+                saved.shadows = L.GlobalShadows
+                L.GlobalShadows = false
+                saved.fx = {}
+                for _, o in ipairs(L:GetChildren()) do
+                    if o:IsA("PostEffect") and o.Name ~= "PureLoaderBlur" and o.Name ~= "GlobalUIBlur" then
+                        saved.fx[o] = o.Enabled
+                        pcall(function() o.Enabled = false end)
+                    end
+                end
+                pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+            else
+                if saved.shadows ~= nil then L.GlobalShadows = saved.shadows end
+                for o, en in pairs(saved.fx or {}) do
+                    if o and o.Parent then pcall(function() o.Enabled = en end) end
+                end
+            end
+        end})
+        UtilTab:Slider({Title = "FPS Cap", Desc = "needs setfpscap", Step = 5, Value = {Min = 15, Max = 240, Default = 60}, Callback = function(v)
+            if type(setfpscap) == "function" then pcall(setfpscap, v) end
+        end})
+        UtilTab:Space()
+        UtilTab:Paragraph({Title = "Camera", Desc = "view tweaks", Color = config.Gradow.uicolor.lightGreen})
+        local defaultFov = workspace.CurrentCamera and workspace.CurrentCamera.FieldOfView or 70
+        UtilTab:Slider({Title = "Field Of View", Desc = "camera FOV", Step = 1, Value = {Min = 40, Max = 120, Default = math.floor(defaultFov)}, Callback = function(v)
+            config.varibz.pureFov = v
+            if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView = v end
+        end})
+        task.spawn(function()
+            while getgenv().PureHub_Loaded do
+                task.wait(0.5)
+                if config.varibz.pureFov and workspace.CurrentCamera and workspace.CurrentCamera.FieldOfView ~= config.varibz.pureFov then
+                    workspace.CurrentCamera.FieldOfView = config.varibz.pureFov
+                end
+            end
+        end)
+        UtilTab:Button({Title = "Reset FOV", Desc = "back to default", Icon = "rotate-ccw", Callback = function()
+            config.varibz.pureFov = nil
+            if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView = defaultFov end
+        end})
+    end
+
+
+    -- ==========================================
+    -- // NEW TAB 3: TELEPORT
+    -- ==========================================
+    local TpTab = Window:Tab({
+        Title = "Teleport",
+        Desc = "players, waypoints, click tp",
+        Icon = "map-pin",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        local selected
+        local waypoints = {}
+        local function root()
+            local c = LocalPlayer.Character
+            return c and c:FindFirstChild("HumanoidRootPart")
+        end
+        local function names()
+            local t = {}
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer then t[#t + 1] = p.Name end
+            end
+            if #t == 0 then t[1] = "(no players)" end
+            return t
+        end
+        TpTab:Paragraph({Title = "Players", Desc = "pick a player then teleport", Color = config.Gradow.uicolor.lightGreen})
+        local dd = TpTab:Dropdown({
+            Title = "Player",
+            Desc = "who to teleport to",
+            Values = names(),
+            Value = names()[1],
+            Multi = false,
+            Callback = function(o) selected = o end
+        })
+        selected = names()[1]
+        TpTab:Button({Title = "Refresh List", Desc = "reload player list", Icon = "refresh-cw", Callback = function()
+            pcall(function() dd:Refresh(names()) end)
+        end})
+        TpTab:Button({Title = "Teleport To Player", Desc = "go to selected", Icon = "navigation", Callback = function()
+            local p = selected and Players:FindFirstChild(selected)
+            local tr = p and p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+            local r = root()
+            if tr and r then
+                r.CFrame = tr.CFrame * CFrame.new(0, 0, 3)
+            else
+                n({Title = "Pure.cc", Content = "player not found", Length = 2, BarColor = Color3.fromRGB(255, 80, 80)})
+            end
+        end})
+        TpTab:Space()
+        TpTab:Paragraph({Title = "Waypoints", Desc = "save where you are, come back later", Color = config.Gradow.uicolor.lightGreen})
+        TpTab:Button({Title = "Save Waypoint", Desc = "remember current position", Icon = "bookmark", Callback = function()
+            local r = root()
+            if r then
+                waypoints[1] = r.CFrame
+                n({Title = "Pure.cc", Content = "waypoint saved", Length = 2, BarColor = Color3.fromRGB(0, 255, 150)})
+            end
+        end})
+        TpTab:Button({Title = "Go To Waypoint", Desc = "teleport back", Icon = "corner-down-right", Callback = function()
+            local r = root()
+            if r and waypoints[1] then r.CFrame = waypoints[1] end
+        end})
+        TpTab:Space()
+        TpTab:Paragraph({Title = "Click TP", Desc = "tap / click anywhere to teleport", Color = config.Gradow.uicolor.lightGreen})
+        local clickTp = false
+        TpTab:Toggle({Title = "Click TP", Desc = "teleport to where you tap", Value = false, Callback = function(v) clickTp = v end})
+        UserInputService.InputBegan:Connect(function(input, gp)
+            if gp or not clickTp then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                local cam = workspace.CurrentCamera
+                local r = root()
+                if not cam or not r then return end
+                local pos = input.Position
+                local ray = cam:ViewportPointToRay(pos.X, pos.Y)
+                local params = RaycastParams.new()
+                params.FilterDescendantsInstances = {LocalPlayer.Character}
+                params.FilterType = Enum.RaycastFilterType.Exclude
+                local hit = workspace:Raycast(ray.Origin, ray.Direction * 2000, params)
+                if hit then r.CFrame = CFrame.new(hit.Position + Vector3.new(0, 3, 0)) end
+            end
+        end)
+    end
+
+    -- ==========================================
+    -- // NEW TAB 4: LIGHTING
+    -- ==========================================
+    local LightTab = Window:Tab({
+        Title = "Lighting",
+        Desc = "fullbright, time, fog",
+        Icon = "sun",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        local L = game:GetService("Lighting")
+        local orig = {
+            Brightness = L.Brightness, ClockTime = L.ClockTime, FogEnd = L.FogEnd,
+            Ambient = L.Ambient, OutdoorAmbient = L.OutdoorAmbient, GlobalShadows = L.GlobalShadows,
+        }
+        local S = {fullbright = false, nofog = false, lockTime = false, time = 12}
+        LightTab:Paragraph({Title = "Lighting", Desc = "see in the dark", Color = config.Gradow.uicolor.lightGreen})
+        LightTab:Toggle({Title = "Fullbright", Desc = "max brightness, no shadows", Value = false, Callback = function(v)
+            S.fullbright = v
+            if not v then
+                L.Brightness = orig.Brightness
+                L.Ambient = orig.Ambient
+                L.OutdoorAmbient = orig.OutdoorAmbient
+                L.GlobalShadows = orig.GlobalShadows
+            end
+        end})
+        LightTab:Toggle({Title = "No Fog", Desc = "remove fog", Value = false, Callback = function(v)
+            S.nofog = v
+            if not v then L.FogEnd = orig.FogEnd end
+        end})
+        LightTab:Space()
+        LightTab:Toggle({Title = "Lock Time", Desc = "freeze time of day", Value = false, Callback = function(v) S.lockTime = v end})
+        LightTab:Slider({Title = "Time Of Day", Desc = "0 - 24", Step = 1, Value = {Min = 0, Max = 24, Default = math.floor(orig.ClockTime)}, Callback = function(v)
+            S.time = v
+            L.ClockTime = v
+        end})
+        LightTab:Button({Title = "Reset Lighting", Desc = "back to default", Icon = "rotate-ccw", Callback = function()
+            S.fullbright, S.nofog, S.lockTime = false, false, false
+            for k, v in pairs(orig) do pcall(function() L[k] = v end) end
+        end})
+        task.spawn(function()
+            while getgenv().PureHub_Loaded do
+                task.wait(0.3)
+                pcall(function()
+                    if S.fullbright then
+                        L.Brightness = 2
+                        L.Ambient = Color3.fromRGB(200, 200, 200)
+                        L.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+                        L.GlobalShadows = false
+                    end
+                    if S.nofog then L.FogEnd = 1e9 end
+                    if S.lockTime then L.ClockTime = S.time end
+                end)
+            end
+        end)
+    end
+
+    -- ==========================================
+    -- // NEW TAB 5: EXTRAS+
+    -- ==========================================
+    local PlusTab = Window:Tab({
+        Title = "Extras+",
+        Desc = "spectate, zoom, anti afk",
+        Icon = "sparkles",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        PlusTab:Paragraph({Title = "Camera", Desc = "spectate & zoom", Color = config.Gradow.uicolor.lightGreen})
+        local specTarget
+        local function plist()
+            local t = {}
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer then t[#t + 1] = p.Name end
+            end
+            if #t == 0 then t[1] = "(no players)" end
+            return t
+        end
+        local sdd = PlusTab:Dropdown({Title = "Spectate Target", Desc = "pick a player", Values = plist(), Value = plist()[1], Multi = false, Callback = function(o) specTarget = o end})
+        specTarget = plist()[1]
+        PlusTab:Button({Title = "Refresh List", Desc = "reload player list", Icon = "refresh-cw", Callback = function()
+            pcall(function() sdd:Refresh(plist()) end)
+        end})
+        PlusTab:Toggle({Title = "Spectate", Desc = "watch selected player", Value = false, Callback = function(v)
+            local cam = workspace.CurrentCamera
+            if v then
+                local p = specTarget and Players:FindFirstChild(specTarget)
+                local h = p and p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+                if h and cam then cam.CameraSubject = h end
+            else
+                local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if h and cam then cam.CameraSubject = h end
+            end
+        end})
+        PlusTab:Toggle({Title = "Unlock Zoom", Desc = "zoom out as far as you want", Value = false, Callback = function(v)
+            pcall(function()
+                LocalPlayer.CameraMaxZoomDistance = v and 100000 or 128
+                LocalPlayer.CameraMinZoomDistance = v and 0 or 0.5
+            end)
+        end})
+        PlusTab:Space()
+        PlusTab:Paragraph({Title = "Utility", Desc = "quality of life", Color = config.Gradow.uicolor.lightGreen})
+        local afkConn
+        PlusTab:Toggle({Title = "Anti AFK", Desc = "do not get kicked for idling", Value = false, Callback = function(v)
+            if afkConn then afkConn:Disconnect() afkConn = nil end
+            if v then
+                afkConn = LocalPlayer.Idled:Connect(function()
+                    pcall(function()
+                        local vu = game:GetService("VirtualUser")
+                        vu:CaptureController()
+                        vu:ClickButton2(Vector2.new())
+                    end)
+                end)
+            end
+        end})
+        PlusTab:Toggle({Title = "Sit", Desc = "sit down", Value = false, Callback = function(v)
+            local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if h then h.Sit = v end
+        end})
+        PlusTab:Button({Title = "Copy Position", Desc = "xyz to clipboard", Icon = "copy", Callback = function()
+            local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if r and type(setclipboard) == "function" then
+                local p = r.Position
+                setclipboard(string.format("%.1f, %.1f, %.1f", p.X, p.Y, p.Z))
+                n({Title = "Pure.cc", Content = "position copied", Length = 2, BarColor = Color3.fromRGB(0, 255, 150)})
+            end
+        end})
+    end
+
+
+    -- ==========================================
+    -- // NEW TAB 6: NPCS
+    -- ==========================================
+    local NpcTab = Window:Tab({
+        Title = "NPCs",
+        Desc = "esp + aim on bots and mobs",
+        Icon = "bot",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        NpcTab:Paragraph({Title = "NPC Control", Desc = "turn the switch on, then use ESP / Aimbot as usual", Color = config.Gradow.uicolor.lightGreen})
+        NpcTab:Toggle({Title = "NPC Switch", Desc = "include NPCs in targets", Value = config.npcMode or false, Callback = function(v) setNPCMode(v) end})
+        NpcTab:Toggle({Title = "NPCs Only", Desc = "ignore real players", Value = false, Callback = function(v)
+            config.npcOnly = v
+            if config.npcMode then setNPCMode(true) end
+        end})
+        NpcTab:Space()
+        NpcTab:Toggle({Title = "NPC ESP", Desc = "turns on NPC switch + ESP", Value = false, Callback = function(v)
+            if v then setNPCMode(true) end
+            pcall(applyESPMaster, v)
+        end})
+        NpcTab:Toggle({Title = "NPC Aimbot", Desc = "turns on NPC switch + aimbot", Value = false, Callback = function(v)
+            if v then setNPCMode(true) end
+            pcall(handleAimbotToggle, v)
+        end})
+        NpcTab:Space()
+        local npcInfo = NpcTab:Paragraph({Title = "NPCs Found", Desc = "switch is off", Color = config.Gradow.uicolor.Black})
+        NpcTab:Button({Title = "Refresh NPCs", Desc = "rescan the workspace", Icon = "refresh-cw", Callback = function()
+            config.varibz.npcCache.lastRefresh = 0
+        end})
+        task.spawn(function()
+            while getgenv().PureHub_Loaded do
+                task.wait(1)
+                pcall(function()
+                    if config.npcMode then
+                        npcInfo:SetDesc("alive in cache: " .. tostring(#config.varibz.npcCache.list))
+                    else
+                        npcInfo:SetDesc("switch is off")
+                    end
+                end)
+            end
+        end)
+    end
+
+    -- ==========================================
+    -- // NEW TAB 7: JOKES
+    -- ==========================================
+    local JokeTab = Window:Tab({
+        Title = "Jokes",
+        Desc = "dirty mouth, clean script",
+        Icon = "smile",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        local jokes = {
+            "Why did the aimbot go to therapy? It kept missing its emotional target.",
+            "My lag is like my ex: shows up at the worst moment and ruins everything.",
+            "Bro's hitbox is so big it needs its own zip code.",
+            "Hat dau vao tim, bat dau vao trim. Aim chuan day boss.",
+            "I asked my script for a quickie. It loaded in 4.5 seconds. Thanks, Pure.",
+            "Ping 999 is just the universe saying go touch grass, bitch.",
+            "Why do NPCs never win? They keep dying to my balls... of fire.",
+            "Yo mama so slow, she lags in single player.",
+            "May cam nhu aimbot nhung tim em van miss.",
+            "Fuck it, we ball. Fuck it, we headshot.",
+            "I'm not saying my aim is bad, but even the wall flinches.",
+            "Dit me, ping gi ma cao the, nhu gia xang vay.",
+            "Esp so clear I can see your trust issues through the wall.",
+            "Killing NPCs is just anger management with extra steps.",
+            "My KD ratio is like my sex life: purely theoretical.",
+            "Roses are red, my screen is blue, the bot has no brain, and neither do you.",
+            "Cai script nay muot hon da em gai, nhung doi lag la khoc.",
+            "Dang yeu hon ca ban gai cu: script khong bao gio doi bo minh.",
+            "They said touch grass. I touched gravel. Now I'm pure.",
+            "Why was the loader so horny? Because it kept hitting 100%.",
+            "Die tu nhien nhu NPC, chet khong ai thuong.",
+            "Hitbox expander: because size does matter, apparently.",
+            "Tao chua thay thang nao dung aimbot ma van thua, tru may.",
+            "Damn, that headshot was cleaner than your browser history.",
+        }
+        local last = "press the button"
+        local jp = JokeTab:Paragraph({Title = "Joke", Desc = last, Color = config.Gradow.uicolor.Black})
+        local function pick()
+            local j = jokes[math.random(1, #jokes)]
+            last = j
+            pcall(function() jp:SetDesc(j) end)
+            return j
+        end
+        JokeTab:Button({Title = "Tell Me A Joke", Desc = "random dirty joke", Icon = "message-circle", Callback = function() pick() end})
+        JokeTab:Button({Title = "Copy Joke", Desc = "to clipboard", Icon = "copy", Callback = function()
+            if type(setclipboard) == "function" then setclipboard(last) end
+        end})
+        JokeTab:Button({Title = "Joke Notification", Desc = "pop one on screen", Icon = "bell", Callback = function()
+            n({Title = "Pure.cc", Content = pick(), Length = 5, BarColor = Color3.fromRGB(0, 150, 60)})
+        end})
+        JokeTab:Space()
+        local auto = false
+        JokeTab:Toggle({Title = "Auto Jokes", Desc = "new joke every 20 seconds", Value = false, Callback = function(v)
+            auto = v
+            if v then
+                task.spawn(function()
+                    while auto and getgenv().PureHub_Loaded do
+                        n({Title = "Pure.cc", Content = pick(), Length = 5, BarColor = Color3.fromRGB(0, 150, 60)})
+                        task.wait(20)
+                    end
+                end)
+            end
+        end})
+    end
+
+    -- ==========================================
+    -- // NEW TAB 8: CHARACTER+
+    -- ==========================================
+    local CharTab = Window:Tab({
+        Title = "Character+",
+        Desc = "sprint, bhop, camera",
+        Icon = "user",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        local C = {sprint = false, sprintSpeed = 32, bhop = false, normalSpeed = 16}
+        local function hum()
+            local c = LocalPlayer.Character
+            return c and c:FindFirstChildOfClass("Humanoid")
+        end
+        CharTab:Paragraph({Title = "Movement", Desc = "hold shift to sprint on pc, always-on for mobile", Color = config.Gradow.uicolor.lightGreen})
+        CharTab:Toggle({Title = "Sprint", Desc = "faster while moving", Value = false, Callback = function(v)
+            C.sprint = v
+            local h = hum()
+            if v and h then C.normalSpeed = h.WalkSpeed end
+            if not v and h then h.WalkSpeed = C.normalSpeed end
+        end})
+        CharTab:Slider({Title = "Sprint Speed", Desc = "walkspeed while sprinting", Step = 2, Value = {Min = 16, Max = 120, Default = 32}, Callback = function(v) C.sprintSpeed = v end})
+        CharTab:Toggle({Title = "Bunny Hop", Desc = "auto jump while moving", Value = false, Callback = function(v) C.bhop = v end})
+        RunService.Heartbeat:Connect(function()
+            if not getgenv().PureHub_Loaded then return end
+            local h = hum()
+            if not h then return end
+            if C.sprint then
+                local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+                local down = touch or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
+                if down and h.MoveDirection.Magnitude > 0 then
+                    h.WalkSpeed = C.sprintSpeed
+                elseif h.WalkSpeed == C.sprintSpeed then
+                    h.WalkSpeed = C.normalSpeed
+                end
+            end
+            if C.bhop and h.MoveDirection.Magnitude > 0 and h.FloorMaterial ~= Enum.Material.Air then
+                h.Jump = true
+            end
+        end)
+        CharTab:Space()
+        CharTab:Paragraph({Title = "Camera", Desc = "view fixes", Color = config.Gradow.uicolor.lightGreen})
+        CharTab:Button({Title = "Reset Camera", Desc = "fix a stuck camera", Icon = "camera", Callback = function()
+            local cam = workspace.CurrentCamera
+            local h = hum()
+            if cam and h then
+                cam.CameraType = Enum.CameraType.Custom
+                cam.CameraSubject = h
+            end
+        end})
+        CharTab:Button({Title = "Remove Accessories", Desc = "client side only", Icon = "eraser", Callback = function()
+            local c = LocalPlayer.Character
+            if c then
+                for _, a in ipairs(c:GetChildren()) do
+                    if a:IsA("Accessory") then pcall(function() a:Destroy() end) end
+                end
+            end
+        end})
+    end
+
+    -- ==========================================
+    -- // NEW TAB 9: SERVER
+    -- ==========================================
+    local SrvTab = Window:Tab({
+        Title = "Server",
+        Desc = "hop, join id, fps and ping",
+        Icon = "server",
+        IconColor = config.Gradow.uicolor.lightGray
+    }) do
+        local stat = SrvTab:Paragraph({Title = "Stats", Desc = "loading...", Color = config.Gradow.uicolor.Black})
+        task.spawn(function()
+            local frames, t0 = 0, tick()
+            local fps = 0
+            RunService.RenderStepped:Connect(function() frames = frames + 1 end)
+            while getgenv().PureHub_Loaded do
+                task.wait(1)
+                fps = math.floor(frames / math.max(tick() - t0, 0.001))
+                frames, t0 = 0, tick()
+                local ping = 0
+                pcall(function() ping = math.round(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) end)
+                pcall(function()
+                    stat:SetDesc("FPS: " .. fps .. "  |  Ping: " .. ping .. " ms\nPlayers: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers)
+                end)
+            end
+        end)
+        SrvTab:Space()
+        SrvTab:Button({Title = "Server Hop", Desc = "join another public server", Icon = "shuffle", Callback = function()
+            task.spawn(function()
+                local ok, data = pcall(function()
+                    return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"))
+                end)
+                if ok and data and data.data then
+                    local list = {}
+                    for _, sv in ipairs(data.data) do
+                        if sv.id ~= game.JobId and sv.playing and sv.maxPlayers and sv.playing < sv.maxPlayers then
+                            list[#list + 1] = sv.id
+                        end
+                    end
+                    if #list > 0 then
+                        pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, list[math.random(1, #list)], LocalPlayer) end)
+                        return
+                    end
+                end
+                n({Title = "Pure.cc", Content = "no server found, trying new server", Length = 3, BarColor = Color3.fromRGB(255, 200, 0)})
+                pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
+            end)
+        end})
+        SrvTab:Button({Title = "Small Server", Desc = "fewest players", Icon = "user-minus", Callback = function()
+            task.spawn(function()
+                local ok, data = pcall(function()
+                    return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+                end)
+                if ok and data and data.data then
+                    for _, sv in ipairs(data.data) do
+                        if sv.id ~= game.JobId and sv.playing and sv.maxPlayers and sv.playing < sv.maxPlayers then
+                            pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, sv.id, LocalPlayer) end)
+                            return
+                        end
+                    end
+                end
+                n({Title = "Pure.cc", Content = "could not find a small server", Length = 3, BarColor = Color3.fromRGB(255, 80, 80)})
+            end)
+        end})
+        SrvTab:Space()
+        local jid = ""
+        SrvTab:Input({Title = "Join JobId", Desc = "paste a server JobId", Placeholder = "JobId", Value = "", ClearTextOnFocus = false, Callback = function(t) jid = t end})
+        SrvTab:Button({Title = "Join Server", Desc = "teleport to that JobId", Icon = "log-in", Callback = function()
+            if jid ~= "" then
+                pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, jid, LocalPlayer) end)
+            end
+        end})
+    end
+
     -- Dev Tab
     local DevTab = Window:Tab({
         Title = "Developer",
@@ -13261,39 +14538,61 @@ local makeeverysingletabs = function()
     end
 end
 
-makeeverysingletabs()
+config.varibz.pureStep("build tabs", makeeverysingletabs)
+
+-- ==========================================
+-- // INIT DEPENDENCY SAFETY
+-- ==========================================
+-- These names are optional in the merged build. Keep them as no-ops when
+-- a remote module/older build did not provide them.
+if type(kshakwieudhjs_skjwnejzjs) ~= "function" then
+    kshakwieudhjs_skjwnejzjs = function() end
+end
+if type(nextgenrepre) ~= "function" then
+    nextgenrepre = function() end
+end
+if type(jdjwhejdijahweki____sidjnww_ieje) ~= "function" then
+    jdjwhejdijahweki____sidjnww_ieje = function() return {} end
+end
+if type(onRenderStep) ~= "function" then
+    onRenderStep = function() end
+end
 
 -- ==========================================
 -- // INIT
 -- ==========================================
 local function init()
-    sjuwhjwjeeuhdjxoah_iejwendkisj()
-    kshakwieudhjs_skjwnejzjs()
-    nextgenrepre()
-    recmods()
-    nanqhsj_wish_nxaiww()
-    autolaodbssthing_()
-    makeeverysingletabs()
-    gui.indicator = jdjwhejdijahweki____sidjnww_ieje()
-    for _, pl in ipairs(excusemesir.Players:GetPlayers()) do
-        if pl ~= localPlayer then
-            setupPlayerListeners(pl)
+    local step = config.varibz.pureStep
+    step("respawn hook", sjuwhjwjeeuhdjxoah_iejwendkisj)
+    step("kshakwieudhjs", kshakwieudhjs_skjwnejzjs)
+    step("nextgenrepre", nextgenrepre)
+    step("recmods", recmods)
+    step("keybinds", nanqhsj_wish_nxaiww)
+    step("autoload", autolaodbssthing_)
+    step("indicator", function() gui.indicator = jdjwhejdijahweki____sidjnww_ieje() end)
+    step("player listeners", function()
+        for _, pl in ipairs(excusemesir.Players:GetPlayers()) do
+            if pl ~= localPlayer then
+                setupPlayerListeners(pl)
+            end
         end
-    end
-    excusemesir.Players.PlayerAdded:Connect(function(pl)
-        if pl ~= localPlayer then
-            setupPlayerListeners(pl)
-        end
+        excusemesir.Players.PlayerAdded:Connect(function(pl)
+            if pl ~= localPlayer then
+                setupPlayerListeners(pl)
+            end
+        end)
+        excusemesir.Players.PlayerRemoving:Connect(function(pl)
+            cleanplrdata(pl)
+        end)
     end)
-    excusemesir.Players.PlayerRemoving:Connect(function(pl)
-        cleanplrdata(pl)
+    step("render step", function()
+        excusemesir.RunService:BindToRenderStep("FOVhbUpdater_Modern", Enum.RenderPriority.First.Value, onRenderStep)
     end)
-    excusemesir.RunService:BindToRenderStep("FOVhbUpdater_Modern", Enum.RenderPriority.First.Value, onRenderStep)
     task.wait(1)
     config.varibz.lowpatcher = false
     task.wait(0.40)
     config.varibz.lowpatcher = true
-    setupAntiAfkPro()
+    step("anti afk", setupAntiAfkPro)
 end
 
 local function clearTargetCache()
@@ -13491,7 +14790,7 @@ local updateESPConnection = excusemesir.RunService.Heartbeat:Connect(function(dt
     end
 end)
 
-init()
+config.varibz.pureStep("init", init)
 
 -- ==========================================
 -- // CLEANUP (On Destroy)
@@ -13539,11 +14838,11 @@ local function buhbyegravellllllll________()
         if config.desyncActive then ineednextgenrep(false) end
         if heartbeatConnection then heartbeatConnection:Disconnect() end
         if updateESPConnection then updateESPConnection:Disconnect() end
-        if callmyoldname then
+        if HAS_HOOKS and callmyoldname then
             hookmetamethod(game, "__namecall", callmyoldname)
             callmyoldname = nil
         end
-        if mouseywousey then
+        if HAS_HOOKS and mouseywousey then
             hookmetamethod(game, "__index", mouseywousey)
             mouseywousey = nil
         end
@@ -13591,9 +14890,49 @@ Window:OnDestroy(function()
     print("Pure.cc closed :(")
 end)
 
-getgenv().destroyInitGui()
-rng()
-rng2()
+config.varibz.pureStep("auto rejoin", config.varibz.pureSetupRejoin)
+config.varibz.pureStep("destroyInitGui", function() getgenv().destroyInitGui() end)
+config.varibz.pureStep("close loader (water)", function()
+    if type(getgenv().PureLoaderCleanup) == "function" then getgenv().PureLoaderCleanup() end
+    local roots = {game:GetService("CoreGui")}
+    if type(gethui) == "function" then
+        local ok, hui = pcall(gethui)
+        if ok and hui then table.insert(roots, hui) end
+    end
+    for _, root in ipairs(roots) do
+        for _, o in ipairs(root:GetChildren()) do
+            if o:IsA("ScreenGui") and o.Name == "water" then o:Destroy() end
+        end
+    end
+    for _, o in ipairs(game:GetService("Lighting"):GetChildren()) do
+        if o:IsA("BlurEffect") and o.Name == "PureLoaderBlur" then o:Destroy() end
+    end
+    if getgenv().PureKillBlur then
+        getgenv().PureKillBlur()
+        task.spawn(function()
+            for _ = 1, 20 do
+                task.wait(0.5)
+                getgenv().PureKillBlur()
+            end
+        end)
+    end
+end)
+config.varibz.pureStep("remove InitializingGui", function()
+    local roots = {game:GetService("CoreGui")}
+    if type(gethui) == "function" then
+        local ok, hui = pcall(gethui)
+        if ok and hui then table.insert(roots, hui) end
+    end
+    for _, root in ipairs(roots) do
+        local g = root:FindFirstChild("InitializingGui")
+        if g then
+            g.Enabled = false
+            g:Destroy()
+        end
+    end
+end)
+config.varibz.pureStep("rng", rng)
+config.varibz.pureStep("rng2", rng2)
 task.wait(2.5)
 
 -- ==========================================
@@ -13606,3 +14945,305 @@ print("Loaded Successfully! :3")
 print("========================================")
 
 return config
+
+end
+
+-- Pure.cc Launcher  (launcher -> START -> loader -> hub)
+
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
+local random = math.random
+
+local normiee = "rbxassetid://107415934558527"
+local glitchy = {
+    "rbxassetid://126903901230171",
+    "rbxassetid://108334175828481",
+    "rbxassetid://76083829320576",
+    "rbxassetid://77937445438901",
+}
+local soundhover = "rbxassetid://9120299810"
+local soundclick = "rbxassetid://139246456147301"
+local glitchsounds = {
+    "rbxassetid://131507757356742",
+    "rbxassetid://140043289814504",
+    "rbxassetid://129687541350237",
+}
+local rngTitles = {
+    "Pure.cc", "P.cc", "Pure-est", "Pure-er", "Puuuure.cc", "Purely.cc",
+    "Hi! I'm Pure.cc", "PURE.CC >:D", "holy pure.cc", "I like pure",
+    "Pure.lua", "pure is rock", "pure cute :3", "Pure.cc",
+}
+
+-- don dep ban cu neu chay lai
+pcall(function()
+    local old = CoreGui:FindFirstChild("option")
+    if old then old:Destroy() end
+    for _, o in ipairs(Lighting:GetChildren()) do
+        if o:IsA("BlurEffect") and o.Name == "PureLauncherBlur" then o:Destroy() end
+    end
+end)
+
+do
+    local snap = {}
+    for _, o in ipairs(Lighting:GetChildren()) do
+        if (o:IsA("BlurEffect") or o:IsA("DepthOfFieldEffect")) and o.Name ~= "PureLauncherBlur" then snap[o] = true end
+    end
+    getgenv().PureBlurSnapshot = snap
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+local blur = Instance.new("BlurEffect")
+local bg = Instance.new("Frame")
+local glitchFrame = Instance.new("Frame")
+local mainImg = Instance.new("ImageLabel")
+
+ScreenGui.Name = "option"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 2147483646
+ScreenGui.Parent = CoreGui
+
+blur.Name = "PureLauncherBlur"
+blur.Size = 0
+blur.Parent = Lighting
+
+bg.Size = UDim2.fromScale(1, 1)
+bg.BackgroundColor3 = Color3.new(0, 0, 0)
+bg.BackgroundTransparency = 0
+bg.BorderSizePixel = 0
+bg.ZIndex = 0
+bg.Parent = ScreenGui
+
+glitchFrame.Size = UDim2.fromScale(1, 1)
+glitchFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+glitchFrame.BackgroundTransparency = 1
+glitchFrame.ZIndex = 100
+glitchFrame.Parent = ScreenGui
+
+mainImg.Name = "MainImage"
+mainImg.AnchorPoint = Vector2.new(0.5, 0.5)
+mainImg.Image = normiee
+mainImg.ZIndex = 1
+mainImg.BorderSizePixel = 0
+mainImg.Size = UDim2.new(0, 370, 0, 320)
+mainImg.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainImg.ScaleType = Enum.ScaleType.Fit
+mainImg.BackgroundTransparency = 1
+mainImg.ImageTransparency = 1
+mainImg.Parent = ScreenGui
+
+local originalPos = UDim2.new(0.5, 0, 0.5, 0)
+local function glitch(offset)
+    if offset and offset > 0 then
+        mainImg.Position = UDim2.new(0.5, (random(0, 1) == 0 and -offset or offset), 0.5, (random(0, 1) == 0 and -offset or offset))
+        mainImg.Image = glitchy[random(1, #glitchy)]
+    else
+        mainImg.Position = originalPos
+        mainImg.Image = normiee
+    end
+end
+
+local soundPool, hoverPool = {}, {}
+for i, id in ipairs(glitchsounds) do
+    local s = Instance.new("Sound") s.SoundId = id s.Volume = 0.12 s.Parent = ScreenGui soundPool[i] = s
+    local h = Instance.new("Sound") h.SoundId = id h.Volume = 0.04 h.Parent = ScreenGui hoverPool[i] = h
+end
+local hoverIndex = 0
+local function playGlitch()
+    local s = soundPool[random(1, #soundPool)]
+    if s then s:Play() end
+end
+local function playHoverGlitch()
+    hoverIndex = hoverIndex % #hoverPool + 1
+    local s = hoverPool[hoverIndex]
+    if s then s:Stop() s:Play() end
+end
+local function playSound(id, vol)
+    local s = Instance.new("Sound")
+    s.SoundId = id
+    s.Volume = vol or 0.2
+    s.Parent = ScreenGui
+    s:Play()
+    task.delay(3, function() s:Destroy() end)
+end
+
+local function makeLabel(name, pos, size, text, align)
+    local l = Instance.new("TextLabel")
+    l.Name = name
+    l.BackgroundTransparency = 1
+    l.TextColor3 = Color3.fromRGB(255, 255, 255)
+    l.TextSize = 12
+    l.Font = Enum.Font.Code
+    l.TextXAlignment = align or Enum.TextXAlignment.Left
+    l.TextYAlignment = Enum.TextYAlignment.Top
+    l.Text = text
+    l.TextTransparency = 1
+    l.Size = UDim2.new(0, size.X, 0, size.Y)
+    l.Position = UDim2.new(0, pos.X, 0, pos.Y)
+    l.ZIndex = 2
+    l.Parent = mainImg
+    return l
+end
+
+local titleLabel = makeLabel("Title", Vector2.new(120, 26), Vector2.new(200, 16), "Pure.cc", Enum.TextXAlignment.Right)
+titleLabel.TextSize = 14
+titleLabel.TextColor3 = Color3.fromRGB(0, 150, 60)
+
+-- nut X
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "Close"
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.Code
+closeBtn.TextSize = 15
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextTransparency = 1
+closeBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.BackgroundTransparency = 1
+closeBtn.BorderSizePixel = 0
+closeBtn.AutoButtonColor = true
+closeBtn.Size = UDim2.new(0, 43, 0, 25)
+closeBtn.Position = UDim2.new(0, 315, 0, 15)
+closeBtn.ZIndex = 5
+closeBtn.Parent = mainImg
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 10)
+closeCorner.Parent = closeBtn
+
+-- nut START duy nhat
+local startBtn = Instance.new("TextButton")
+startBtn.Name = "Start"
+startBtn.Text = ""
+startBtn.AutoButtonColor = false
+startBtn.BackgroundTransparency = 1
+startBtn.Size = UDim2.new(0, 200, 0, 50)
+startBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+startBtn.Position = UDim2.new(0.5, 0, 0.5, 20)
+startBtn.ZIndex = 3
+startBtn.Parent = mainImg
+
+local startLabel = Instance.new("TextLabel")
+startLabel.BackgroundTransparency = 1
+startLabel.Text = "START"
+startLabel.TextColor3 = Color3.fromRGB(0, 150, 60)
+startLabel.TextSize = 28
+startLabel.Font = Enum.Font.Code
+startLabel.TextTransparency = 1
+startLabel.Size = UDim2.fromScale(1, 1)
+startLabel.ZIndex = 4
+startLabel.Parent = startBtn
+
+local function onHover(hovered)
+    TweenService:Create(startLabel, TweenInfo.new(0.15), {
+        TextColor3 = hovered and Color3.fromRGB(0, 210, 90) or Color3.fromRGB(0, 150, 60)
+    }):Play()
+end
+
+startBtn.MouseEnter:Connect(function()
+    onHover(true)
+    playSound(soundhover, 0.15)
+    playHoverGlitch()
+    glitch(random(2, 6))
+    task.delay(0.1, function() glitch(0) end)
+end)
+startBtn.MouseLeave:Connect(function() onHover(false) end)
+closeBtn.MouseEnter:Connect(function()
+    playSound(soundhover, 0.15)
+    playHoverGlitch()
+    glitch(random(2, 6))
+    task.delay(0.1, function() glitch(0) end)
+    TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundTransparency = 0.7}):Play()
+end)
+closeBtn.MouseLeave:Connect(function()
+    TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundTransparency = 1}):Play()
+end)
+
+-- doi title ngau nhien
+task.spawn(function()
+    local last = 0
+    while ScreenGui and ScreenGui.Parent do
+        if tick() - last > random(4, 9) then
+            local t = TweenService:Create(titleLabel, TweenInfo.new(0.3), {TextTransparency = 1})
+            t:Play()
+            t.Completed:Wait()
+            titleLabel.Text = rngTitles[random(1, #rngTitles)]
+            TweenService:Create(titleLabel, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+            last = tick()
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- glitch ngau nhien
+task.spawn(function()
+    while ScreenGui and ScreenGui.Parent do
+        if random() < 0.55 then
+            glitch(random(2, 8))
+            playGlitch()
+            task.wait(random(1, 4) / 10)
+            glitch(0)
+        end
+        task.wait(1.5)
+    end
+end)
+
+-- an hien intro
+local function intro()
+    TweenService:Create(blur, TweenInfo.new(0.4), {Size = 8}):Play()
+    glitchFrame.BackgroundTransparency = 0
+    task.wait(0.05)
+    for _ = 1, 6 do
+        glitch(random(4, 12))
+        playGlitch()
+        task.wait(0.05)
+        glitch(0)
+        task.wait(0.03)
+    end
+    TweenService:Create(glitchFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    task.wait(0.2)
+    TweenService:Create(mainImg, TweenInfo.new(0.4), {ImageTransparency = 0}):Play()
+    task.wait(0.1)
+    TweenService:Create(titleLabel, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+    TweenService:Create(closeBtn, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+    TweenService:Create(startLabel, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+end
+
+-- dong launcher: tat blur DUNG LUC, khong de blur ton tai
+local function fadeAll(duration)
+    local info = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    TweenService:Create(blur, info, {Size = 0}):Play()
+    TweenService:Create(mainImg, info, {ImageTransparency = 1}):Play()
+    TweenService:Create(bg, info, {BackgroundTransparency = 1}):Play()
+    for _, v in ipairs(mainImg:GetDescendants()) do
+        if v:IsA("TextLabel") or v:IsA("TextButton") then
+            TweenService:Create(v, info, {TextTransparency = 1}):Play()
+        end
+    end
+    task.wait(duration + 0.1)
+    pcall(function() ScreenGui:Destroy() end)
+    pcall(function() blur:Destroy() end)
+end
+
+-- backup: du co loi gi thi blur cung bi go sau 20s
+task.delay(20, function()
+    pcall(function() blur:Destroy() end)
+end)
+
+local started = false
+startBtn.MouseButton1Click:Connect(function()
+    if started then return end
+    started = true
+    playSound(soundclick, 0.3)
+    fadeAll(0.35)
+    -- launcher xong -> loader
+    task.spawn(function()
+        local ok, err = xpcall(PureHubMain, function(e) return debug.traceback(tostring(e), 2) end)
+        if not ok then warn("[Pure.cc] khong chay duoc: " .. tostring(err)) end
+    end)
+end)
+closeBtn.MouseButton1Click:Connect(function()
+    playSound(soundclick, 0.3)
+    fadeAll(0.3)
+end)
+
+intro()
